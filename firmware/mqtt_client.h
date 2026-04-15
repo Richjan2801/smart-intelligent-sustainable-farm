@@ -1,10 +1,10 @@
 #pragma once
 #include <Arduino.h>
-#include <WiFi.h>
 #include <WiFiClientSecure.h>
 #include <PubSubClient.h>
 #include <ArduinoJson.h>
 #include "config.h"
+#include "buffer.h"
 
 class MqttClient {
 public:

@@ -1,18 +1,23 @@
 #pragma once
 
-// Sensor
+// ── Sensor ────────────────────────────────────────────────────────────────────
 #define DHT_PIN  4
 #define DHT_TYPE DHT11
 
-// Buffer
+// ── Buffer ────────────────────────────────────────────────────────────────────
 #define MAX_BUFFER_SIZE 50
 
-// Timing
+// ── Timing ────────────────────────────────────────────────────────────────────
 #define READ_INTERVAL_MS   5000
 #define RECONNECT_DELAY_MS 5000
 
-// TLS — Comodo AAA Certificate Services (mqtt.thingsboard.cloud)
-#define TB_CA_CERT R"EOF(
+// ── ThingsBoard MQTT ──────────────────────────────────────────────────────────
+#define TB_HOST  "mqtt.thingsboard.cloud"
+#define TB_TOPIC "v1/devices/me/telemetry"
+#define TB_PORT  8883
+
+// ── TLS Certificate ───────────────────────────────────────────────────────────
+const char TB_CA_CERT[] PROGMEM = R"EOF(
 -----BEGIN CERTIFICATE-----
 MIIEMjCCAxqgAwIBAgIBATANBgkqhkiG9w0BAQUFADB7MQswCQYDVQQGEwJHQjEb
 MBkGA1UECAwSR3JlYXRlciBNYW5jaGVzdGVyMRAwDgYDVQQHDAdTYWxmb3JkMRow

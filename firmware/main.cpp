@@ -66,12 +66,12 @@ void loop() {
     mqtt.loop();
 
     // Reconnect WiFi + MQTT if needed
-    if (millis() - lastReconnect > RECONNECT_DELAY_MS) {
+    if (millis() - lastReconnect >= RECONNECT_DELAY_MS) {
+        lastReconnect = millis(); // Update before attempting to prevent rapid retries
         if (WiFi.status() != WL_CONNECTED) connectWiFi();
         if (WiFi.status() == WL_CONNECTED && !mqtt.isConnected()) {
             if (mqtt.connect()) flushBuffer();
         }
-        lastReconnect = millis();
     }
 
     // Read sensor on interval
