@@ -1,0 +1,694 @@
+<directory_structure>
+.gitignore
+backend/package.json
+backend/src/server.js
+firmware/buffer.h
+firmware/config.h
+firmware/main.cpp
+firmware/mqtt_client.h
+frontend/index.html
+frontend/package.json
+frontend/public/vite.svg
+frontend/src/App.jsx
+frontend/src/assets/react.svg
+frontend/src/main.jsx
+frontend/src/styles.css
+frontend/vite.config.js
+include/README
+lib/README
+platformio.ini
+test/README
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path="backend/package.json">
+{
+  "name": "sisf-backend",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch src/server.js",
+    "start": "node src/server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.21.0"
+  }
+}
+</file>
+
+<file path="backend/src/server.js">
+import cors from "cors";
+import express from "express";
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+app.use(cors());
+app.use(express.json());
+
+app.get("/health", (_req, res) => {
+  res.json({
+    status: "ok",
+    service: "sisf-backend"
+  });
+});
+
+app.get("/api/telemetry/latest", (_req, res) => {
+  res.json({
+    temperature: 28.5,
+    humidity: 67.0,
+    source: "placeholder"
+  });
+});
+
+app.listen(PORT, () => {
+  console.log(`SISF backend listening on http://localhost:${PORT}`);
+});
+</file>
+
+<file path="firmware/buffer.h">
+#pragma once
+#include <Arduino.h>
+#include "config.h"
+
+struct SensorPayload {
+    float temperature;
+    float humidity;
+    unsigned long timestamp; // millis() at time of read
+};
+
+class CircularBuffer {
+public:
+    CircularBuffer() : _head(0), _tail(0), _count(0) {}
+
+    bool push(const SensorPayload& p) {
+        if (isFull()) {
+            // Overwrite oldest entry
+            _head = (_head + 1) % MAX_BUFFER_SIZE;
+            _count--;
+        }
+        _buf[_tail] = p;
+        _tail = (_tail + 1) % MAX_BUFFER_SIZE;
+        _count++;
+        return true;
+    }
+
+    bool pop(SensorPayload& out) {
+        if (isEmpty()) return false;
+        out = _buf[_head];
+        _head = (_head + 1) % MAX_BUFFER_SIZE;
+        _count--;
+        return true;
+    }
+
+    bool isEmpty() const { return _count == 0; }
+    bool isFull()  const { return _count == MAX_BUFFER_SIZE; }
+    int  count()   const { return _count; }
+
+private:
+    SensorPayload _buf[MAX_BUFFER_SIZE];
+    int _head, _tail, _count;
+};
+</file>
+
+<file path="firmware/config.h">
+#pragma once
+
+// ── Sensor ────────────────────────────────────────────────────────────────────
+#define DHT_PIN  4
+#define DHT_TYPE DHT11
+
+// ── Buffer ────────────────────────────────────────────────────────────────────
+#define MAX_BUFFER_SIZE 50
+
+// ── Timing ────────────────────────────────────────────────────────────────────
+#define READ_INTERVAL_MS   5000
+#define RECONNECT_DELAY_MS 5000
+
+// ── ThingsBoard MQTT ──────────────────────────────────────────────────────────
+#define TB_HOST  "mqtt.thingsboard.cloud"
+#define TB_TOPIC "v1/devices/me/telemetry"
+#define TB_PORT  8883
+
+// ── TLS Certificate ───────────────────────────────────────────────────────────
+const char TB_CA_CERT[] PROGMEM = R"EOF(
+-----BEGIN CERTIFICATE-----
+MIIEMjCCAxqgAwIBAgIBATANBgkqhkiG9w0BAQUFADB7MQswCQYDVQQGEwJHQjEb
+MBkGA1UECAwSR3JlYXRlciBNYW5jaGVzdGVyMRAwDgYDVQQHDAdTYWxmb3JkMRow
+GAYDVQQKDBFDb21vZG8gQ0EgTGltaXRlZDEhMB8GA1UEAwwYQUFBIENlcnRpZmlj
+YXRlIFNlcnZpY2VzMB4XDTA0MDEwMTAwMDAwMFoXDTI4MTIzMTIzNTk1OVowezEL
+MAkGA1UEBhMCR0IxGzAZBgNVBAgMEkdyZWF0ZXIgTWFuY2hlc3RlcjEQMA4GA1UE
+BwwHU2FsZm9yZDEaMBgGA1UECgwRQ29tb2RvIENBIExpbWl0ZWQxITAfBgNVBAMM
+GEFBQSBDZXJ0aWZpY2F0ZSBTZXJ2aWNlczCCASIwDQYJKoZIhvcNAQEBBQADggEP
+ADCCAQoCggEBAL5AnfRu4ep2hxxNRUSOvkbIgwadwSr+GB+O5AL686tdUIoWMQua
+BtDFcCLNSS1UY8y2bmhGC1Pqy0wkwLxyTurxFa70VJoSCsN6sjNg4tqJVfMiWPPe
+3M/vg4aijJRPn2jymJBGhCfHdr/jzDUsi14HZGWCwEiwqJH5YZ92IFCokcdmtet4
+YgNW8IoaE+oxox6gmf049vYnMlhvB/VruPsUK6+3qszWY19zjNoFmag4qMsXeDZR
+rOme9Hg6jc8P2ULimAyrL58OAd7vn5lJ8S3frHRNG5i1R8XlKdH5kBjHYpy+g8cm
+ez6KJcfA3Z3mNWgQIJ2P2N7Sw4ScDV7oL8kCAwEAAaOBwDCBvTAdBgNVHQ4EFgQU
+oBEKIz6W8Qfs4q8p74Klf9AwpLQwDgYDVR0PAQH/BAQDAgEGMA8GA1UdEwEB/wQF
+MAMBAf8wewYDVR0fBHQwcjA4oDagNIYyaHR0cDovL2NybC5jb21vZG9jYS5jb20v
+QUFBQ2VydGlmaWNhdGVTZXJ2aWNlcy5jcmwwNqA0oDKGMGh0dHA6Ly9jcmwuY29t
+b2RvLm5ldC9BQUFDZXJ0aWZpY2F0ZVNlcnZpY2VzLmNybDANBgkqhkiG9w0BAQUF
+AAOCAQEACFb8AvCb6P+k+tZ7xkSAzk/ExfYAWMymtrwUSWgEdujm7l3sAg9g1o1Q
+GE8mTgHj5rCl7r+8dFRBv/38ErjHT1r0iWAFf2C3BUrz9vHCv8S5dIa2LX1rzNLz
+Rt0vxuBqw8M0Ayx9lt1awg6nCpnBBYurDC/zXDrPbDdVCYfeU0BsWO/8tqtlbgT2
+G9w84FoVxp7Z8VlIMCFlA2zs6SFz7JsDoeA3raAVGI/6ugLOpyypEBMs1OUIJqsi
+l2D4kF501KKaU73yqWjgom7C12yxow+ev+to51byrvLjKzg6CYG1a4XXvi3tPxq3
+smPi9WIsgtRqAEFQ8TmDn5XpNpaYbg==
+-----END CERTIFICATE-----
+)EOF";
+</file>
+
+<file path="firmware/main.cpp">
+#include <Arduino.h>
+#include <WiFi.h>
+#include <DHT.h>
+#include "config.h"
+#include "buffer.h"
+#include "mqtt_client.h"
+
+DHT         dht(DHT_PIN, DHT_TYPE);
+CircularBuffer buffer;
+MqttClient  mqtt;
+
+unsigned long lastReadMs    = 0;
+unsigned long lastReconnect = 0;
+
+// ── WiFi ──────────────────────────────────────────────────────────────────────
+
+void connectWiFi() {
+    if (WiFi.status() == WL_CONNECTED) return;
+    Serial.printf("[WiFi] Connecting to %s", WIFI_SSID);
+    WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+    unsigned long start = millis();
+    while (WiFi.status() != WL_CONNECTED && millis() - start < 10000) {
+        delay(500);
+        Serial.print(".");
+    }
+    Serial.println(WiFi.status() == WL_CONNECTED ? " Connected!" : " Failed.");
+}
+
+// ── Flush local buffer to ThingsBoard ────────────────────────────────────────
+
+void flushBuffer() {
+    if (buffer.isEmpty()) return;
+    Serial.printf("[Buffer] Flushing %d buffered entries...\n", buffer.count());
+    SensorPayload p;
+    while (buffer.pop(p)) {
+        if (!mqtt.publish(p)) {
+            // Re-push on failure and stop flushing
+            buffer.push(p);
+            Serial.println("[Buffer] Flush interrupted, will retry.");
+            break;
+        }
+    }
+}
+
+// ── Read sensor ───────────────────────────────────────────────────────────────
+
+SensorPayload readSensor() {
+    SensorPayload p;
+    p.humidity    = dht.readHumidity();
+    p.temperature = dht.readTemperature();
+    p.timestamp   = millis();
+    return p;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+void setup() {
+    Serial.begin(115200);
+    dht.begin();
+    mqtt.begin();
+    connectWiFi();
+}
+
+void loop() {
+    // Keep MQTT alive
+    mqtt.loop();
+
+    // Reconnect WiFi + MQTT if needed
+    if (millis() - lastReconnect >= RECONNECT_DELAY_MS) {
+        lastReconnect = millis(); // Update before attempting to prevent rapid retries
+        if (WiFi.status() != WL_CONNECTED) connectWiFi();
+        if (WiFi.status() == WL_CONNECTED && !mqtt.isConnected()) {
+            if (mqtt.connect()) flushBuffer();
+        }
+    }
+
+    // Read sensor on interval
+    if (millis() - lastReadMs < READ_INTERVAL_MS) return;
+    lastReadMs = millis();
+
+    SensorPayload p = readSensor();
+
+    if (isnan(p.temperature) || isnan(p.humidity)) {
+        Serial.println("[Sensor] Read failed.");
+        return;
+    }
+
+    Serial.printf("[Sensor] Temp: %.1f°C | Hum: %.1f%%\n", p.temperature, p.humidity);
+
+    if (mqtt.isConnected()) {
+        if (!mqtt.publish(p)) buffer.push(p);
+    } else {
+        Serial.println("[Buffer] Offline — storing locally.");
+        buffer.push(p);
+        Serial.printf("[Buffer] %d/%d entries stored.\n", buffer.count(), MAX_BUFFER_SIZE);
+    }
+}
+</file>
+
+<file path="firmware/mqtt_client.h">
+#pragma once
+#include <Arduino.h>
+#include <WiFiClientSecure.h>
+#include <PubSubClient.h>
+#include <ArduinoJson.h>
+#include "config.h"
+#include "buffer.h"
+
+class MqttClient {
+public:
+    MqttClient() : _wifiClient(), _client(_wifiClient) {}
+
+    void begin() {
+        _wifiClient.setCACert(TB_CA_CERT);
+        _client.setServer(TB_HOST, TB_PORT);
+    }
+
+    bool isConnected() {
+        return _client.connected();
+    }
+
+    void loop() {
+        _client.loop();
+    }
+
+    bool connect() {
+        if (_client.connected()) return true;
+        Serial.print("[MQTT] Connecting to ThingsBoard (TLS)... ");
+        bool ok = _client.connect("ESP32_SISF", TB_ACCESS_TOKEN, nullptr);
+        Serial.println(ok ? "OK" : "FAILED");
+        return ok;
+    }
+
+    bool publish(const SensorPayload& p) {
+        if (!_client.connected()) return false;
+
+        JsonDocument doc;
+        doc["temperature"] = p.temperature;
+        doc["humidity"]    = p.humidity;
+
+        char buf[128];
+        serializeJson(doc, buf);
+
+        bool ok = _client.publish(TB_TOPIC, buf, false);
+        if (ok) Serial.printf("[MQTT] Published: %s\n", buf);
+        else    Serial.println("[MQTT] Publish failed");
+        return ok;
+    }
+
+private:
+    WiFiClientSecure _wifiClient;
+    PubSubClient     _client;
+};
+</file>
+
+<file path="frontend/index.html">
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SISF Frontend</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+  </html>
+</file>
+
+<file path="frontend/package.json">
+{
+  "name": "sisf-frontend",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.1",
+    "vite": "^5.4.8"
+  }
+}
+</file>
+
+<file path="frontend/public/vite.svg">
+<svg xmlns="http://www.w3.org/2000/svg" aria-label="Vite logo" viewBox="0 0 410 404">
+  <path fill="#41D1FF" d="M399.641 59.524 215.643 388.545c-3.71 6.637-13.236 6.653-16.968.03L10.39 59.544c-4.104-7.177 2.019-15.899 10.06-14.341l184.235 35.72a9.72 9.72 0 0 0 3.715-.006l181.124-35.673c8.03-1.58 14.18 7.126 10.117 14.28Z"/>
+  <path fill="#BD34FE" d="M292.965.168 156.412 26.91a4.793 4.793 0 0 0-3.916 3.777l-8.714 47.44a4.793 4.793 0 0 0 5.676 5.575l37.985-7.409a4.793 4.793 0 0 1 5.738 5.974l-11.281 55.276a4.793 4.793 0 0 0 6.43 5.377l23.457-9.31a4.793 4.793 0 0 1 6.268 5.669l-17.922 86.947c-1.122 5.443 6.114 8.411 9.15 3.754l2.028-3.11 111.245-222.02c2.34-4.67-1.702-10.02-6.886-9.006Z"/>
+</svg>
+</file>
+
+<file path="frontend/src/App.jsx">
+import { useState } from "react";
+import reactLogo from "./assets/react.svg";
+import viteLogo from "/vite.svg";
+
+export default function App() {
+  const [count, setCount] = useState(0);
+
+  return (
+    <>
+      <div>
+        <a href="https://vite.dev" target="_blank" rel="noreferrer">
+          <img src={viteLogo} className="logo" alt="Vite logo" />
+        </a>
+        <a href="https://react.dev" target="_blank" rel="noreferrer">
+          <img src={reactLogo} className="logo react" alt="React logo" />
+        </a>
+      </div>
+      <h1>Vite + React</h1>
+      <div className="card">
+        <button onClick={() => setCount((countValue) => countValue + 1)}>
+          count is {count}
+        </button>
+        <p>
+          Edit <code>src/App.jsx</code> and save to test HMR
+        </p>
+      </div>
+      <p className="read-the-docs">
+        Click on the Vite and React logos to learn more
+      </p>
+    </>
+  );
+}
+</file>
+
+<file path="frontend/src/assets/react.svg">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-11.5 -10.23174 23 20.46348">
+  <circle cx="0" cy="0" r="2.05" fill="#61dafb"/>
+  <g stroke="#61dafb" stroke-width="1" fill="none">
+    <ellipse rx="11" ry="4.2"/>
+    <ellipse rx="11" ry="4.2" transform="rotate(60)"/>
+    <ellipse rx="11" ry="4.2" transform="rotate(120)"/>
+  </g>
+</svg>
+</file>
+
+<file path="frontend/src/main.jsx">
+import React from "react";
+import ReactDOM from "react-dom/client";
+import App from "./App";
+import "./styles.css";
+
+ReactDOM.createRoot(document.getElementById("root")).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
+);
+</file>
+
+<file path="frontend/src/styles.css">
+:root {
+  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  color-scheme: light dark;
+  color: rgba(255, 255, 255, 0.87);
+  background-color: #242424;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+a {
+  font-weight: 500;
+  color: #646cff;
+  text-decoration: inherit;
+}
+
+a:hover {
+  color: #535bf2;
+}
+
+body {
+  margin: 0;
+  display: flex;
+  place-items: center;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+h1 {
+  font-size: 3.2em;
+  line-height: 1.1;
+}
+
+button {
+  border-radius: 8px;
+  border: 1px solid transparent;
+  padding: 0.6em 1.2em;
+  font-size: 1em;
+  font-weight: 500;
+  font-family: inherit;
+  background-color: #1a1a1a;
+  cursor: pointer;
+  transition: border-color 0.25s;
+}
+
+button:hover {
+  border-color: #646cff;
+}
+
+button:focus,
+button:focus-visible {
+  outline: 4px auto -webkit-focus-ring-color;
+}
+
+#root {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: center;
+}
+
+.logo {
+  height: 6em;
+  padding: 1.5em;
+  will-change: filter;
+  transition: filter 300ms;
+}
+
+.logo:hover {
+  filter: drop-shadow(0 0 2em #646cffaa);
+}
+
+.logo.react:hover {
+  filter: drop-shadow(0 0 2em #61dafbaa);
+}
+
+.card {
+  padding: 2em;
+}
+
+.read-the-docs {
+  color: #888;
+}
+
+@keyframes logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  a:nth-of-type(2) .logo {
+    animation: logo-spin infinite 20s linear;
+  }
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    color: #213547;
+    background-color: #ffffff;
+  }
+
+  a:hover {
+    color: #747bff;
+  }
+
+  button {
+    background-color: #f9f9f9;
+  }
+}
+</file>
+
+<file path="frontend/vite.config.js">
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+
+export default defineConfig({
+  plugins: [react()],
+  server: {
+    host: "0.0.0.0",
+    port: 5173
+  }
+});
+</file>
+
+<file path="include/README">
+This directory is intended for project header files.
+
+A header file is a file containing C declarations and macro definitions
+to be shared between several project source files. You request the use of a
+header file in your project source file (C, C++, etc) located in `src` folder
+by including it, with the C preprocessing directive `#include'.
+
+```src/main.c
+
+#include "header.h"
+
+int main (void)
+{
+ ...
+}
+```
+
+Including a header file produces the same results as copying the header file
+into each source file that needs it. Such copying would be time-consuming
+and error-prone. With a header file, the related declarations appear
+in only one place. If they need to be changed, they can be changed in one
+place, and programs that include the header file will automatically use the
+new version when next recompiled. The header file eliminates the labor of
+finding and changing all the copies as well as the risk that a failure to
+find one copy will result in inconsistencies within a program.
+
+In C, the convention is to give header files names that end with `.h'.
+
+Read more about using header files in official GCC documentation:
+
+* Include Syntax
+* Include Operation
+* Once-Only Headers
+* Computed Includes
+
+https://gcc.gnu.org/onlinedocs/cpp/Header-Files.html
+</file>
+
+<file path="lib/README">
+This directory is intended for project specific (private) libraries.
+PlatformIO will compile them to static libraries and link into the executable file.
+
+The source code of each library should be placed in a separate directory
+("lib/your_library_name/[Code]").
+
+For example, see the structure of the following example libraries `Foo` and `Bar`:
+
+|--lib
+|  |
+|  |--Bar
+|  |  |--docs
+|  |  |--examples
+|  |  |--src
+|  |     |- Bar.c
+|  |     |- Bar.h
+|  |  |- library.json (optional. for custom build options, etc) https://docs.platformio.org/page/librarymanager/config.html
+|  |
+|  |--Foo
+|  |  |- Foo.c
+|  |  |- Foo.h
+|  |
+|  |- README --> THIS FILE
+|
+|- platformio.ini
+|--src
+   |- main.c
+
+Example contents of `src/main.c` using Foo and Bar:
+```
+#include <Foo.h>
+#include <Bar.h>
+
+int main (void)
+{
+  ...
+}
+
+```
+
+The PlatformIO Library Dependency Finder will find automatically dependent
+libraries by scanning project source files.
+
+More information about PlatformIO Library Dependency Finder
+- https://docs.platformio.org/page/librarymanager/ldf.html
+</file>
+
+<file path="test/README">
+This directory is intended for PlatformIO Test Runner and project tests.
+
+Unit Testing is a software testing method by which individual units of
+source code, sets of one or more MCU program modules together with associated
+control data, usage procedures, and operating procedures, are tested to
+determine whether they are fit for use. Unit testing finds problems early
+in the development cycle.
+
+More information about PlatformIO Unit Testing:
+- https://docs.platformio.org/en/latest/advanced/unit-testing/index.html
+</file>
+
+<file path=".gitignore">
+node_modules/
+.pio
+.vscode/.browse.c_cpp.db*
+.vscode/c_cpp_properties.json
+.vscode/launch.json
+.vscode/ipch
+.vscode/
+secrets.ini
+</file>
+
+<file path="platformio.ini">
+[platformio]
+extra_configs = secrets.ini
+src_dir = firmware
+
+[env:esp32doit-devkit-v1]
+platform = espressif32
+board = esp32doit-devkit-v1
+framework = arduino
+monitor_speed = 115200
+
+lib_deps =
+    adafruit/DHT sensor library@^1.4.6
+    adafruit/Adafruit Unified Sensor@^1.1.14
+    bblanchon/ArduinoJson@^7.0.0
+    knolleary/PubSubClient@^2.8
+
+build_flags =
+    -D TB_HOST=\"mqtt.thingsboard.cloud\"
+    -D TB_TOPIC=\"v1/devices/me/telemetry\"
+    ${secrets.build_flags}
+</file>
+
+</files>

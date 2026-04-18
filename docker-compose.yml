@@ -1,0 +1,29 @@
+services:
+  mosquitto:
+    image: eclipse-mosquitto:2
+    container_name: sisf-mosquitto
+    ports:
+      - "1883:1883"   # plaintext (development)
+      # - "8883:8883" # TLS — uncomment saat TLS siap
+    volumes:
+      - ./mosquitto/config/mosquitto.conf:/mosquitto/config/mosquitto.conf
+      - ./mosquitto/certs:/mosquitto/certs   # placeholder untuk TLS nanti
+      - ./mosquitto/data:/mosquitto/data
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16
+    container_name: sisf-postgres
+    environment:
+      POSTGRES_DB: sisf_db
+      POSTGRES_USER: admin_richly
+      POSTGRES_PASSWORD: Vbnm7890
+    ports:
+      - "5434:5432"
+    volumes:
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+volumes:
+  postgres_data:

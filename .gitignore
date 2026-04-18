@@ -5,4 +5,15 @@ node_modules/
 .vscode/launch.json
 .vscode/ipch
 .vscode/
+.qodo
 secrets.ini
+
+# Environment
+.env
+
+# Docker volumes
+mosquitto/data/
+mosquitto/certs/
+
+# Database
+postgres_data/
