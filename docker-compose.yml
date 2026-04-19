@@ -4,7 +4,7 @@ services:
     container_name: sisf-mosquitto
     ports:
       - "1883:1883"   # plaintext (development)
-      # - "8883:8883" # TLS — uncomment saat TLS siap
+      - "8883:8883" # TLS — uncomment saat TLS siap
     volumes:
       - ./mosquitto/config/mosquitto.conf:/mosquitto/config/mosquitto.conf
       - ./mosquitto/certs:/mosquitto/certs   # placeholder untuk TLS nanti
