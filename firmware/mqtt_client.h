@@ -11,22 +11,18 @@ public:
     MqttClient() : _wifiClient(), _client(_wifiClient) {}
 
     void begin() {
-        _wifiClient.setCACert(TB_CA_CERT);
-        _client.setServer(TB_HOST, TB_PORT);
+        _wifiClient.setCACert(MQTT_CA_CERT);
+        _client.setServer(MQTT_HOST, MQTT_PORT);
     }
 
-    bool isConnected() {
-        return _client.connected();
-    }
+    bool isConnected() { return _client.connected(); }
 
-    void loop() {
-        _client.loop();
-    }
+    void loop() { _client.loop(); }
 
     bool connect() {
         if (_client.connected()) return true;
-        Serial.print("[MQTT] Connecting to ThingsBoard (TLS)... ");
-        bool ok = _client.connect("ESP32_SISF", TB_ACCESS_TOKEN, nullptr);
+        Serial.print("[MQTT] Connecting (TLS)... ");
+        bool ok = _client.connect("ESP32_SISF", MQTT_USERNAME, MQTT_PASSWORD);
         Serial.println(ok ? "OK" : "FAILED");
         return ok;
     }
@@ -41,7 +37,7 @@ public:
         char buf[128];
         serializeJson(doc, buf);
 
-        bool ok = _client.publish(TB_TOPIC, buf, false);
+        bool ok = _client.publish(MQTT_TOPIC, buf, false);
         if (ok) Serial.printf("[MQTT] Published: %s\n", buf);
         else    Serial.println("[MQTT] Publish failed");
         return ok;

@@ -1,88 +1,88 @@
 #include <Arduino.h>
 #include <WiFi.h>
-#include <WiFiClientSecure.h>
-#include <PubSubClient.h>
+#include <DHT.h>
+#include "config.h"
+#include "buffer.h"
+#include "mqtt_client.h"
 
-// WiFi credentials
-const char* ssid = "WIFI_SSID";
-const char* password = "WIFI_PASSWORD";
+DHT            dht(DHT_PIN, DHT_TYPE);
+CircularBuffer buffer;
+MqttClient     mqtt;
 
-// ThingsBoard
-const char* mqtt_server = "mqtt.thingsboard.cloud";
-const int mqtt_port = 8883;
-const char* access_token = "i5vnl3g01wxhvaegql51";
-
-// CA Certificate
-const char* ca_cert = R"EOF(
------BEGIN CERTIFICATE-----
-MIIEMjCCAxqgAwIBAgIBATANBgkqhkiG9w0BAQUFADB7MQswCQYDVQQGEwJHQjEb
-MBkGA1UECAwSR3JlYXRlciBNYW5jaGVzdGVyMRAwDgYDVQQHDAdTYWxmb3JkMRow
-GAYDVQQKDBFDb21vZG8gQ0EgTGltaXRlZDEhMB8GA1UEAwwYQUFBIENlcnRpZmlj
-YXRlIFNlcnZpY2VzMB4XDTA0MDEwMTAwMDAwMFoXDTI4MTIzMTIzNTk1OVowezEL
-MAkGA1UEBhMCR0IxGzAZBgNVBAgMEkdyZWF0ZXIgTWFuY2hlc3RlcjEQMA4GA1UE
-BwwHU2FsZm9yZDEaMBgGA1UECgwRQ29tb2RvIENBIExpbWl0ZWQxITAfBgNVBAMM
-GEFBQSBDZXJ0aWZpY2F0ZSBTZXJ2aWNlczCCASIwDQYJKoZIhvcNAQEBBQADggEP
-ADCCAQoCggEBAL5AnfRu4ep2hxxNRUSOvkbIgwadwSr+GB+O5AL686tdUIoWMQua
-BtDFcCLNSS1UY8y2bmhGC1Pqy0wkwLxyTurxFa70VJoSCsN6sjNg4tqJVfMiWPPe
-3M/vg4aijJRPn2jymJBGhCfHdr/jzDUsi14HZGWCwEiwqJH5YZ92IFCokcdmtet4
-YgNW8IoaE+oxox6gmf049vYnMlhvB/VruPsUK6+3qszWY19zjNoFmag4qMsXeDZR
-rOme9Hg6jc8P2ULimAyrL58OAd7vn5lJ8S3frHRNG5i1R8XlKdH5kBjHYpy+g8cm
-ez6KJcfA3Z3mNWgQIJ2P2N7Sw4ScDV7oL8kCAwEAAaOBwDCBvTAdBgNVHQ4EFgQU
-oBEKIz6W8Qfs4q8p74Klf9AwpLQwDgYDVR0PAQH/BAQDAgEGMA8GA1UdEwEB/wQF
-MAMBAf8wewYDVR0fBHQwcjA4oDagNIYyaHR0cDovL2NybC5jb21vZG9jYS5jb20v
-QUFBQ2VydGlmaWNhdGVTZXJ2aWNlcy5jcmwwNqA0oDKGMGh0dHA6Ly9jcmwuY29t
-b2RvLm5ldC9BQUFDZXJ0aWZpY2F0ZVNlcnZpY2VzLmNybDANBgkqhkiG9w0BAQUF
-AAOCAQEACFb8AvCb6P+k+tZ7xkSAzk/ExfYAWMymtrwUSWgEdujm7l3sAg9g1o1Q
-GE8mTgHj5rCl7r+8dFRBv/38ErjHT1r0iWAFf2C3BUrz9vHCv8S5dIa2LX1rzNLz
-Rt0vxuBqw8M0Ayx9lt1awg6nCpnBBYurDC/zXDrPbDdVCYfeU0BsWO/8tqtlbgT2
-G9w84FoVxp7Z8VlIMCFlA2zs6SFz7JsDoeA3raAVGI/6ugLOpyypEBMs1OUIJqsi
-l2D4kF501KKaU73yqWjgom7C12yxow+ev+to51byrvLjKzg6CYG1a4XXvi3tPxq3
-smPi9WIsgtRqAEFQ8TmDn5XpNpaYbg==
------END CERTIFICATE-----
-)EOF";
-
-WiFiClientSecure espClient;
-PubSubClient client(espClient);
+unsigned long lastReadMs    = 0;
+unsigned long lastReconnect = 0;
 
 void connectWiFi() {
-    Serial.print("Connecting to WiFi");
-    WiFi.begin(ssid, password);
-    while (WiFi.status() != WL_CONNECTED) {
+    if (WiFi.status() == WL_CONNECTED) return;
+    Serial.printf("[WiFi] Connecting to %s", WIFI_SSID);
+    WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+    unsigned long start = millis();
+    while (WiFi.status() != WL_CONNECTED && millis() - start < 10000) {
         delay(500);
         Serial.print(".");
     }
-    Serial.println("\nWiFi connected!");
-    Serial.println(WiFi.localIP());
+    Serial.println(WiFi.status() == WL_CONNECTED ? " Connected!" : " Failed.");
 }
 
-void connectMQTT() {
-    espClient.setCACert(ca_cert);
-    client.setServer(mqtt_server, mqtt_port);
-    
-    Serial.print("Connecting to ThingsBoard via MQTT over TLS");
-    while (!client.connected()) {
-        if (client.connect("ESP32_SISF", access_token, NULL)) {
-            Serial.println("\nConnected!");
-        } else {
-            Serial.print(".");
-            delay(1000);
+void flushBuffer() {
+    if (buffer.isEmpty()) return;
+    Serial.printf("[Buffer] Flushing %d entries...\n", buffer.count());
+    SensorPayload p;
+    while (buffer.pop(p)) {
+        if (!mqtt.publish(p)) {
+            buffer.push(p);
+            Serial.println("[Buffer] Flush interrupted, will retry.");
+            break;
         }
     }
 }
 
+SensorPayload readSensor() {
+    return {
+        .temperature = dht.readTemperature(),
+        .humidity    = dht.readHumidity(),
+        .timestamp   = millis()
+    };
+}
+
 void setup() {
     Serial.begin(115200);
+    delay(2000); // Allow time for serial monitor to connect
+    Serial.println("=== BOOTING ===");
+    dht.begin();
+    mqtt.begin();
     connectWiFi();
-    connectMQTT();
+    if (WiFi.status() == WL_CONNECTED) mqtt.connect();
 }
 
 void loop() {
-    client.loop();
-    
-    // Kirim data dummy setiap 5 detik
-    String payload = "{\"temperature\":28.5,\"humidity\":67.0}";
-    client.publish("v1/devices/me/telemetry", payload.c_str());
-    Serial.println("Published: " + payload);
-    
-    delay(5000);
+    mqtt.loop();
+
+    if (millis() - lastReconnect >= RECONNECT_DELAY_MS) {
+        lastReconnect = millis();
+        if (WiFi.status() != WL_CONNECTED) connectWiFi();
+        if (WiFi.status() == WL_CONNECTED && !mqtt.isConnected()) {
+            if (mqtt.connect()) flushBuffer();
+        }
+    }
+
+    if (millis() - lastReadMs < READ_INTERVAL_MS) return;
+    lastReadMs = millis();
+
+    SensorPayload p = readSensor();
+
+    if (isnan(p.temperature) || isnan(p.humidity)) {
+        Serial.println("[Sensor] Read failed.");
+        return;
+    }
+
+    Serial.printf("[Sensor] Temp: %.1f°C | Hum: %.1f%%\n", p.temperature, p.humidity);
+
+    if (mqtt.isConnected()) {
+        if (!mqtt.publish(p)) buffer.push(p);
+    } else {
+        buffer.push(p);
+        Serial.printf("[Buffer] Offline — %d/%d entries stored.\n",
+                      buffer.count(), MAX_BUFFER_SIZE);
+    }
 }

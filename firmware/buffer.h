@@ -3,9 +3,9 @@
 #include "config.h"
 
 struct SensorPayload {
-    float temperature;
-    float humidity;
-    unsigned long timestamp; // millis() at time of read
+    float         temperature;
+    float         humidity;
+    unsigned long timestamp;
 };
 
 class CircularBuffer {
@@ -14,7 +14,6 @@ public:
 
     bool push(const SensorPayload& p) {
         if (isFull()) {
-            // Overwrite oldest entry
             _head = (_head + 1) % MAX_BUFFER_SIZE;
             _count--;
         }
@@ -26,7 +25,7 @@ public:
 
     bool pop(SensorPayload& out) {
         if (isEmpty()) return false;
-        out = _buf[_head];
+        out   = _buf[_head];
         _head = (_head + 1) % MAX_BUFFER_SIZE;
         _count--;
         return true;
