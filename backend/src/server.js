@@ -64,11 +64,14 @@ mqttClient.on('connect', () => {
 mqttClient.on('message', async (_topic, message) => {
   resetWatchdog();
   try {
-    const { temperature, humidity } = JSON.parse(message.toString());
+    const { temperature, humidity, offline_buffered } = JSON.parse(message.toString());
     if (temperature == null || humidity == null) return;
 
-    await insertSensorData({ devId: DEVICE_ID, devStatus: 'online', tem: temperature, hum: humidity });
-    console.log(`[DB] Inserted — temp: ${temperature}, hum: ${humidity}`);
+    // Data buffered saat offline → status tetap offline
+    const devStatus = offline_buffered ? 'offline' : 'online';
+
+    await insertSensorData({ devId: DEVICE_ID, devStatus, tem: temperature, hum: humidity });
+    console.log(`[DB] Inserted — status: ${devStatus}, temp: ${temperature}, hum: ${humidity}`);
   } catch (err) {
     console.error('[Error]', err.message);
   }

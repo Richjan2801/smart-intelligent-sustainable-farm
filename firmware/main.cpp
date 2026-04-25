@@ -17,7 +17,7 @@ void connectWiFi() {
     Serial.printf("[WiFi] Connecting to %s", WIFI_SSID);
     WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
     unsigned long start = millis();
-    while (WiFi.status() != WL_CONNECTED && millis() - start < 10000) {
+    while (WiFi.status() != WL_CONNECTED && millis() - start < 5000) {
         delay(500);
         Serial.print(".");
     }
@@ -29,7 +29,7 @@ void flushBuffer() {
     Serial.printf("[Buffer] Flushing %d entries...\n", buffer.count());
     SensorPayload p;
     while (buffer.pop(p)) {
-        if (!mqtt.publish(p)) {
+        if (!mqtt.publish(p, true)) {  // ← true = buffered
             buffer.push(p);
             Serial.println("[Buffer] Flush interrupted, will retry.");
             break;
