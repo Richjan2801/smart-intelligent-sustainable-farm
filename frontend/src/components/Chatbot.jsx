@@ -16,7 +16,7 @@ export default function Chatbot() {
       { role: "user", text: input },
       {
         role: "ai",
-        text: "This is a mock response (connect AI later 🤖)",
+        text: "Hello, nice to meet you! How can I help you today?",
       },
     ];
 
