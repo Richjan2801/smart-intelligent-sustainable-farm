@@ -4,10 +4,12 @@
 #include "config.h"
 #include "buffer.h"
 #include "mqtt_client.h"
+#include "pump.h"
 
 DHT            dht(DHT_PIN, DHT_TYPE);
 CircularBuffer buffer;
 MqttClient     mqtt;
+PumpController pump;
 
 unsigned long lastReadMs    = 0;
 unsigned long lastReconnect = 0;
@@ -29,7 +31,7 @@ void flushBuffer() {
     Serial.printf("[Buffer] Flushing %d entries...\n", buffer.count());
     SensorPayload p;
     while (buffer.pop(p)) {
-        if (!mqtt.publish(p, true)) {  // ← true = buffered
+        if (!mqtt.publish(p, true, pump.isOn())) {
             buffer.push(p);
             Serial.println("[Buffer] Flush interrupted, will retry.");
             break;
@@ -47,9 +49,10 @@ SensorPayload readSensor() {
 
 void setup() {
     Serial.begin(115200);
-    delay(2000); // Allow time for serial monitor to connect
+    delay(2000);
     Serial.println("=== BOOTING ===");
     dht.begin();
+    pump.begin();
     mqtt.begin();
     connectWiFi();
     if (WiFi.status() == WL_CONNECTED) mqtt.connect();
@@ -57,6 +60,7 @@ void setup() {
 
 void loop() {
     mqtt.loop();
+    pump.update();
 
     if (millis() - lastReconnect >= RECONNECT_DELAY_MS) {
         lastReconnect = millis();
@@ -76,10 +80,13 @@ void loop() {
         return;
     }
 
-    Serial.printf("[Sensor] Temp: %.1f°C | Hum: %.1f%%\n", p.temperature, p.humidity);
+    Serial.printf("[Sensor] Temp: %.1f°C | Hum: %.1f%% | Pump: %s\n",
+                  p.temperature, p.humidity, pump.isOn() ? "ON" : "OFF");
+
+    pump.evaluate(p.temperature, p.humidity);
 
     if (mqtt.isConnected()) {
-        if (!mqtt.publish(p)) buffer.push(p);
+        if (!mqtt.publish(p, false, pump.isOn())) buffer.push(p);
     } else {
         buffer.push(p);
         Serial.printf("[Buffer] Offline — %d/%d entries stored.\n",

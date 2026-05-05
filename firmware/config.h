@@ -4,16 +4,19 @@
 #define DHT_PIN  4
 #define DHT_TYPE DHT11
 
+// Pump (IRLZ44N MOSFET Gate)
+#define PUMP_PIN          18      // GPIO ke Gate IRLZ44N
+#define TEMP_THRESHOLD    30.0f   // °C
+#define HUM_THRESHOLD     60.0f   // % 
+#define PUMP_ON_DURATION  10000   // ms
+#define PUMP_COOLDOWN     30000   // ms
+
 // Buffer
 #define MAX_BUFFER_SIZE 50
 
 // Timing
 #define READ_INTERVAL_MS   5000
 #define RECONNECT_DELAY_MS 5000
-
-// MQTT
-// MQTT_HOST, MQTT_PORT, MQTT_TOPIC, MQTT_USERNAME, MQTT_PASSWORD
-// from secrets.ini via platformio.ini build_flags
 
 // TLS — ISRG Root X1 (HiveMQ Cloud / Let's Encrypt)
 const char MQTT_CA_CERT[] PROGMEM = R"EOF(

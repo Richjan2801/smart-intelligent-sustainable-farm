@@ -27,13 +27,14 @@ public:
         return ok;
     }
 
-    bool publish(const SensorPayload& p, bool buffered = false) {
+    bool publish(const SensorPayload& p, bool buffered = false, bool pumpOn = false) {
     if (!_client.connected()) return false;
 
     JsonDocument doc;
     doc["temperature"]      = p.temperature;
     doc["humidity"]         = p.humidity;
     doc["offline_buffered"] = buffered;
+    doc["pump_on"]          = pumpOn;      // ← baru
 
     char buf[128];
     serializeJson(doc, buf);
@@ -42,7 +43,7 @@ public:
     if (ok) Serial.printf("[MQTT] Published: %s\n", buf);
     else    Serial.println("[MQTT] Publish failed");
     return ok;
-}
+    }
 
 private:
     WiFiClientSecure _wifiClient;
