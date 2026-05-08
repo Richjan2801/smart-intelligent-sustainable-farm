@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "scripts": {
-    "start:dev": "npm run build && npm run live",
+    "start:all": "npm run build && npm run live",
     "server": "npm run dev --prefix backend",
     "build": "platformio run --target upload --environment esp32doit-devkit-v1",
     "monitor": "platformio device monitor --environment esp32doit-devkit-v1",
