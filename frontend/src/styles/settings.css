@@ -1,0 +1,86 @@
+.settings-container {
+  background: #f3f4f6;
+  min-height: 100vh;
+  transition: 0.3s;
+}
+
+.settings-content {
+  padding: 32px;
+}
+
+.settings-section {
+  margin-bottom: 48px;
+}
+
+.settings-card {
+  background: white;
+  padding: 24px;
+  border-radius: 20px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+}
+
+.settings-input {
+  width: 100%;
+  margin-top: 8px;
+  padding: 10px 14px;
+
+  border: 1px solid #d1d5db;
+  border-radius: 12px;
+
+  outline: none;
+}
+
+.settings-input:focus {
+  box-shadow: 0 0 0 2px #3b82f6;
+}
+
+.settings-input-disabled {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+.settings-select {
+  padding: 10px 14px;
+
+  border: 1px solid #d1d5db;
+  border-radius: 12px;
+
+  outline: none;
+}
+
+.toggle-container {
+  display: flex;
+  background: #e5e7eb;
+  border-radius: 9999px;
+  padding: 4px;
+}
+
+.toggle-button {
+  padding: 6px 16px;
+  border-radius: 9999px;
+  transition: 0.2s;
+}
+
+.toggle-button.active {
+  background: #2563eb;
+  color: white;
+}
+
+.section-title-container {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.section-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #374151;
+}
+
+.section-line {
+  flex: 1;
+  height: 1px;
+  background: #d1d5db;
+}

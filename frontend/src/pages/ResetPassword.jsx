@@ -1,6 +1,9 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+
 import bg from "../assets/bg-login.jpg";
+
+import "../styles/auth.css";
 
 export default function ResetPassword() {
   const navigate = useNavigate();
@@ -23,22 +26,24 @@ export default function ResetPassword() {
     }
 
     setError("");
+
     alert("Password berhasil diubah!");
+
     navigate("/login");
   };
 
   return (
     <div
-      className="min-h-screen flex items-center justify-center bg-cover bg-center"
+      className="login-page min-h-screen flex items-center justify-center bg-cover bg-center"
       style={{ backgroundImage: `url(${bg})` }}
     >
-      <div className="w-[400px] bg-white p-8 rounded-2xl shadow-xl">
+      <div className="auth-card-small">
 
-        <h1 className="text-2xl font-bold mb-2 text-center">
+        <h1 className="login-title auth-center-title">
           Reset Password
         </h1>
 
-        <p className="text-gray-500 mb-6 text-sm text-center">
+        <p className="auth-small-text">
           Enter your new password
         </p>
 
@@ -52,7 +57,7 @@ export default function ResetPassword() {
               setPassword(e.target.value);
               setError("");
             }}
-            className="w-full px-4 py-3 rounded-lg bg-gray-100"
+            className="auth-input"
           />
 
           <input
@@ -63,30 +68,34 @@ export default function ResetPassword() {
               setConfirm(e.target.value);
               setError("");
             }}
-            className="w-full px-4 py-3 rounded-lg bg-gray-100"
+            className="auth-input"
           />
 
-          {error && <p className="text-red-500 text-sm">{error}</p>}
+          {error && (
+            <p className="error-text">{error}</p>
+          )}
 
-          <button className="w-full bg-blue-600 text-white py-3 rounded-lg">
+          <button className="auth-button">
             Reset Password
           </button>
         </form>
 
-        <div className="flex justify-between mt-6 text-sm">
+        <div className="auth-navigation">
+
           <span
             onClick={() => navigate("/forgot-password")}
-            className="text-blue-600 cursor-pointer"
+            className="auth-link"
           >
             ← Back
           </span>
 
           <span
             onClick={() => navigate("/login")}
-            className="text-gray-500 cursor-pointer"
+            className="auth-link"
           >
             Login
           </span>
+
         </div>
       </div>
     </div>

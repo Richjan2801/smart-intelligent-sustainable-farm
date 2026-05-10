@@ -8,19 +8,43 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
-export default function ChartCard({ data, dataKey, color = "#2563EB" }) {
-  if (!data || data.length === 0) return <p>No data</p>;
+import "../styles/chartcard.css";
+
+export default function ChartCard({
+  data,
+  dataKey,
+  color = "#2563EB",
+}) {
+  if (!data || data.length === 0) {
+    return (
+      <p className="chart-empty">
+        No data
+      </p>
+    );
+  }
 
   return (
-    <div className="w-full h-64">
-      <ResponsiveContainer width="100%" height="100%">
+    <div className="chart-card">
+
+      <ResponsiveContainer
+        width="100%"
+        height="100%"
+      >
+
         <LineChart data={data}>
-          <CartesianGrid strokeDasharray="3 3" />
+
+          <CartesianGrid
+            strokeDasharray="3 3"
+          />
 
           <XAxis dataKey="time" />
 
-          {/* 🔥 FIX UTAMA DI SINI */}
-          <YAxis domain={['dataMin - 2', 'dataMax + 2']} />
+          <YAxis
+            domain={[
+              "dataMin - 2",
+              "dataMax + 2",
+            ]}
+          />
 
           <Tooltip />
 
@@ -32,7 +56,9 @@ export default function ChartCard({ data, dataKey, color = "#2563EB" }) {
             dot={{ r: 3 }}
             activeDot={{ r: 6 }}
           />
+
         </LineChart>
+
       </ResponsiveContainer>
     </div>
   );

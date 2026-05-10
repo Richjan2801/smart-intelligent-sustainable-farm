@@ -8,3 +8,4 @@ mosquitto/data/
 postgres_data/
 node_modules/
 repomix-output.xml
+dist/
