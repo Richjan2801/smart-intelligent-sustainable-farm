@@ -105,59 +105,6 @@ export default function Settings() {
             </div>
           </div>
 
-          {/* MONITORING */}
-          <div className="settings-section">
-
-            <SectionTitle title={t.monitoring} />
-
-            <div className="settings-card">
-
-              <label>
-                {t.interval}
-              </label>
-
-              <div className="flex gap-4 mt-2">
-
-                <input
-                  type="number"
-                  value={interval}
-                  onChange={(e) =>
-                    setInterval(e.target.value)
-                  }
-                  className="settings-input w-24"
-                />
-
-                <select
-                  value={unit}
-                  onChange={(e) =>
-                    setUnit(e.target.value)
-                  }
-                  className="settings-select"
-                >
-                  <option value="seconds">
-                    Seconds
-                  </option>
-
-                  <option value="minutes">
-                    Minutes
-                  </option>
-
-                  <option value="hours">
-                    Hours
-                  </option>
-                </select>
-
-              </div>
-
-              {isNaN(interval) && (
-                <p className="text-red-500 text-xs mt-2">
-                  Interval must be a number
-                </p>
-              )}
-
-            </div>
-          </div>
-
           {/* DISPLAY */}
           <div className="settings-section">
 
