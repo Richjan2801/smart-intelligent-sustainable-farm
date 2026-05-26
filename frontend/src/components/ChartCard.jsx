@@ -53,8 +53,8 @@ export default function ChartCard({
             dataKey={dataKey}
             stroke={color}
             strokeWidth={3}
-            dot={{ r: 3 }}
-            activeDot={{ r: 6 }}
+            dot={false}
+            activeDot={false}
           />
 
         </LineChart>

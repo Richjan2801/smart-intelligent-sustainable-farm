@@ -1,16 +1,34 @@
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useState, useEffect } from "react";
 
 const ConfigContext = createContext();
+
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
 export function ConfigProvider({ children }) {
   const [config, setConfig] = useState({
     tempUnit: "C",
     language: "EN",
-    devices: [
-      { id: "esp32_01", name: "Greenhouse Sensor 1" },
-      { id: "esp32_02", name: "Greenhouse Sensor 2" },
-    ],
+    devices: [],
   });
+
+  useEffect(() => {
+    fetch(`${API_URL}/api/devices`)
+      .then((res) => res.json())
+      .then((json) => {
+        if (json.status === "ok" && Array.isArray(json.data)) {
+          setConfig((prev) => ({
+            ...prev,
+            devices: json.data.map((d) => ({
+              id: String(d.dev_id),
+              name: d.name,
+            })),
+          }));
+        }
+      })
+      .catch(() => {
+        // silent — devices stays empty
+      });
+  }, []);
 
   return (
     <ConfigContext.Provider value={{ config, setConfig }}>
