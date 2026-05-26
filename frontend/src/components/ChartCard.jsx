@@ -15,10 +15,12 @@ export default function ChartCard({
   dataKey,
   color = "#2563EB",
 }) {
-  if (!data || data.length === 0) {
+  const hasValidData = data && data.length > 0 && data.some((d) => d[dataKey] != null);
+
+  if (!hasValidData) {
     return (
       <p className="chart-empty">
-        No data
+        No data available
       </p>
     );
   }

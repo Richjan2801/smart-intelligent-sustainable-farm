@@ -97,8 +97,8 @@ export default function Dashboard() {
           hour: "2-digit",
           minute: "2-digit",
         }),
-        temp: Number(row.tem),
-        hum: Number(row.hum),
+        temp: row.tem != null ? Number(row.tem) : null,
+        hum: row.hum != null ? Number(row.hum) : null,
       }));
 
       cacheRef.current[selectedRange] = transformed;
@@ -143,8 +143,8 @@ export default function Dashboard() {
   const convertTemp = (val) =>
     config.tempUnit === "C" ? val : (val * 9) / 5 + 32;
 
-  const latestTemp = latest ? convertTemp(Number(latest.tem)).toFixed(1) : "--";
-  const latestHum = latest ? Number(latest.hum).toFixed(1) : "--";
+  const latestTemp = latest && latest.tem != null ? convertTemp(Number(latest.tem)).toFixed(1) : "--";
+  const latestHum = latest && latest.hum != null ? Number(latest.hum).toFixed(1) : "--";
 
   // ── Render ────────────────────────────────────────────────────────────────
 
