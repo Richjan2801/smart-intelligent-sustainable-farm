@@ -1,31 +1,41 @@
+import { useState } from "react";
+
 import Sidebar from "../components/Sidebar";
 import Header from "../components/Header";
 
 import { useConfig } from "../context/ConfigContext";
-
-import { useState } from "react";
-
 import { lang } from "../utils/lang";
 
 import "../styles/settings.css";
 
 export default function Settings() {
-  const [sidebarOpen, setSidebarOpen] =
-    useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
 
   const { config, setConfig } = useConfig();
 
   const t = lang[config.language];
 
-  const [interval, setInterval] =
-    useState(5);
+  const isIntervalInvalid =
+    config.intervalValue === "" ||
+    isNaN(config.intervalValue) ||
+    Number(config.intervalValue) <= 0;
 
-  const [unit, setUnit] =
-    useState("minutes");
+  const updateIntervalValue = (value) => {
+    setConfig((prev) => ({
+      ...prev,
+      intervalValue: value,
+    }));
+  };
+
+  const updateIntervalUnit = (value) => {
+    setConfig((prev) => ({
+      ...prev,
+      intervalUnit: value,
+    }));
+  };
 
   return (
     <div className="flex">
-
       {/* SIDEBAR */}
       <Sidebar
         open={sidebarOpen}
@@ -38,83 +48,130 @@ export default function Settings() {
           sidebarOpen ? "ml-64" : "ml-20"
         }`}
       >
-
         <Header />
 
         <div className="settings-content space-y-12">
-
           {/* DEVICE */}
           <div className="settings-section">
-
             <SectionTitle title={t.device} />
 
             <div className="settings-card space-y-4">
+              {config.devices.length === 0 ? (
+                <p className="text-gray-500 text-sm">
+                  Loading devices from database...
+                </p>
+              ) : (
+                config.devices.map((device, i) => (
+                  <div
+                    key={device.id}
+                    className="grid grid-cols-2 gap-6"
+                  >
+                    {/* DEVICE NAME */}
+                    <div>
+                      <label>
+                        {t.deviceName}
+                      </label>
 
-              {config.devices.map((device, i) => (
+                      <input
+                        value={device.name}
+                        onChange={(e) => {
+                          const newDevices = [
+                            ...config.devices,
+                          ];
 
-                <div
-                  key={device.id}
-                  className="grid grid-cols-2 gap-6"
+                          newDevices[i].name =
+                            e.target.value;
+
+                          setConfig((prev) => ({
+                            ...prev,
+                            devices: newDevices,
+                          }));
+                        }}
+                        className="settings-input"
+                      />
+                    </div>
+
+                    {/* DEVICE ID */}
+                    <div>
+                      <label>
+                        {t.deviceId}
+                      </label>
+
+                      <input
+                        value={device.id}
+                        disabled
+                        className="settings-input settings-input-disabled"
+                      />
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* MONITORING */}
+          <div className="settings-section">
+            <SectionTitle title={t.monitoring} />
+
+            <div className="settings-card">
+              <label>
+                {t.interval}
+              </label>
+
+              <div className="flex gap-4 mt-2">
+                <input
+                  type="number"
+                  min="1"
+                  value={config.intervalValue}
+                  onChange={(e) =>
+                    updateIntervalValue(e.target.value)
+                  }
+                  className="settings-input w-24"
+                />
+
+                <select
+                  value={config.intervalUnit}
+                  onChange={(e) =>
+                    updateIntervalUnit(e.target.value)
+                  }
+                  className="settings-select"
                 >
+                  <option value="seconds">
+                    Seconds
+                  </option>
 
-                  {/* DEVICE NAME */}
-                  <div>
+                  <option value="minutes">
+                    Minutes
+                  </option>
 
-                    <label>
-                      {t.deviceName}
-                    </label>
+                  <option value="hours">
+                    Hours
+                  </option>
+                </select>
+              </div>
 
-                    <input
-                      value={device.name}
-                      onChange={(e) => {
-                        const newDevices = [
-                          ...config.devices,
-                        ];
+              {isIntervalInvalid && (
+                <p className="text-red-500 text-xs mt-2">
+                  Interval must be a valid number greater than 0.
+                </p>
+              )}
 
-                        newDevices[i].name =
-                          e.target.value;
-
-                        setConfig({
-                          ...config,
-                          devices: newDevices,
-                        });
-                      }}
-                      className="settings-input"
-                    />
-
-                  </div>
-
-                  {/* DEVICE ID */}
-                  <div>
-
-                    <label>
-                      {t.deviceId}
-                    </label>
-
-                    <input
-                      value={device.id}
-                      disabled
-                      className="settings-input settings-input-disabled"
-                    />
-
-                  </div>
-
-                </div>
-              ))}
-
+              {!isIntervalInvalid && (
+                <p className="text-gray-500 text-xs mt-2">
+                  Dashboard data refreshes every{" "}
+                  {config.intervalValue} {config.intervalUnit}.
+                </p>
+              )}
             </div>
           </div>
 
           {/* DISPLAY */}
           <div className="settings-section">
-
             <SectionTitle title={t.display} />
 
             <div className="settings-card space-y-6">
-
               {/* TEMP UNIT */}
               <div className="flex justify-between items-center">
-
                 <span>
                   {t.tempUnit}
                 </span>
@@ -124,18 +181,16 @@ export default function Settings() {
                   right="F"
                   value={config.tempUnit}
                   setValue={(val) =>
-                    setConfig({
-                      ...config,
+                    setConfig((prev) => ({
+                      ...prev,
                       tempUnit: val,
-                    })
+                    }))
                   }
                 />
-
               </div>
 
               {/* LANGUAGE */}
               <div className="flex justify-between items-center">
-
                 <span>
                   {t.language}
                 </span>
@@ -145,18 +200,15 @@ export default function Settings() {
                   right="EN"
                   value={config.language}
                   setValue={(val) =>
-                    setConfig({
-                      ...config,
+                    setConfig((prev) => ({
+                      ...prev,
                       language: val,
-                    })
+                    }))
                   }
                 />
-
               </div>
-
             </div>
           </div>
-
         </div>
       </div>
     </div>
@@ -166,13 +218,11 @@ export default function Settings() {
 function SectionTitle({ title }) {
   return (
     <div className="section-title-container">
-
       <h2 className="section-title">
         {title}
       </h2>
 
       <div className="section-line"></div>
-
     </div>
   );
 }
@@ -185,13 +235,10 @@ function Toggle({
 }) {
   return (
     <div className="toggle-container">
-
       <button
         onClick={() => setValue(left)}
         className={`toggle-button ${
-          value === left
-            ? "active"
-            : ""
+          value === left ? "active" : ""
         }`}
       >
         {left}
@@ -200,14 +247,11 @@ function Toggle({
       <button
         onClick={() => setValue(right)}
         className={`toggle-button ${
-          value === right
-            ? "active"
-            : ""
+          value === right ? "active" : ""
         }`}
       >
         {right}
       </button>
-
     </div>
   );
 }

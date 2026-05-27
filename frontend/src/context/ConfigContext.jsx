@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 
 const ConfigContext = createContext();
 
@@ -8,6 +8,12 @@ export function ConfigProvider({ children }) {
   const [config, setConfig] = useState({
     tempUnit: "C",
     language: "EN",
+
+    // Monitoring interval
+    intervalValue: 5,
+    intervalUnit: "minutes",
+
+    // Devices will be fetched from database
     devices: [],
   });
 
