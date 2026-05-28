@@ -9,10 +9,6 @@ export function ConfigProvider({ children }) {
     tempUnit: "C",
     language: "EN",
 
-    // Monitoring interval
-    intervalValue: 5,
-    intervalUnit: "minutes",
-
     // Devices will be fetched from database
     devices: [],
   });

@@ -140,21 +140,17 @@ export default function Dashboard() {
     fetchLatest();
     fetchHistory(range);
 
-    const intervalMs = getRefreshIntervalMs(config);
-
     const interval = setInterval(() => {
       fetchLatest();
       fetchDeviceStatus();
 
       delete cacheRef.current[range];
       fetchHistory(range);
-    }, intervalMs);
+    }, 5000);
 
     return () => clearInterval(interval);
   }, [
     range,
-    config.intervalValue,
-    config.intervalUnit,
     checkDb,
     fetchDeviceStatus,
     fetchLatest,
@@ -475,25 +471,6 @@ export default function Dashboard() {
       </div>
     </div>
   );
-}
-
-function getRefreshIntervalMs(config) {
-  const value = Number(config.intervalValue);
-
-  if (!value || value <= 0 || isNaN(value)) {
-    return 5000;
-  }
-
-  switch (config.intervalUnit) {
-    case "seconds":
-      return value * 1000;
-    case "minutes":
-      return value * 60 * 1000;
-    case "hours":
-      return value * 60 * 60 * 1000;
-    default:
-      return 5000;
-  }
 }
 
 function SectionTitle({ title }) {

@@ -15,25 +15,6 @@ export default function Settings() {
 
   const t = lang[config.language];
 
-  const isIntervalInvalid =
-    config.intervalValue === "" ||
-    isNaN(config.intervalValue) ||
-    Number(config.intervalValue) <= 0;
-
-  const updateIntervalValue = (value) => {
-    setConfig((prev) => ({
-      ...prev,
-      intervalValue: value,
-    }));
-  };
-
-  const updateIntervalUnit = (value) => {
-    setConfig((prev) => ({
-      ...prev,
-      intervalUnit: value,
-    }));
-  };
-
   return (
     <div className="flex">
       {/* SIDEBAR */}
@@ -105,62 +86,6 @@ export default function Settings() {
                     </div>
                   </div>
                 ))
-              )}
-            </div>
-          </div>
-
-          {/* MONITORING */}
-          <div className="settings-section">
-            <SectionTitle title={t.monitoring} />
-
-            <div className="settings-card">
-              <label>
-                {t.interval}
-              </label>
-
-              <div className="flex gap-4 mt-2">
-                <input
-                  type="number"
-                  min="1"
-                  value={config.intervalValue}
-                  onChange={(e) =>
-                    updateIntervalValue(e.target.value)
-                  }
-                  className="settings-input w-24"
-                />
-
-                <select
-                  value={config.intervalUnit}
-                  onChange={(e) =>
-                    updateIntervalUnit(e.target.value)
-                  }
-                  className="settings-select"
-                >
-                  <option value="seconds">
-                    Seconds
-                  </option>
-
-                  <option value="minutes">
-                    Minutes
-                  </option>
-
-                  <option value="hours">
-                    Hours
-                  </option>
-                </select>
-              </div>
-
-              {isIntervalInvalid && (
-                <p className="text-red-500 text-xs mt-2">
-                  Interval must be a valid number greater than 0.
-                </p>
-              )}
-
-              {!isIntervalInvalid && (
-                <p className="text-gray-500 text-xs mt-2">
-                  Dashboard data refreshes every{" "}
-                  {config.intervalValue} {config.intervalUnit}.
-                </p>
               )}
             </div>
           </div>

@@ -1,11 +1,25 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+
 import logo from "../assets/BRIN-PresUniv-SISF.png";
 import bg from "../assets/bg-login.jpg";
 import sideBg from "../assets/bg-side.jpg";
+
 import { users } from "../mock/MockData";
 
 import "../styles/auth.css";
+
+const TOKEN_DURATION_MS = 24 * 60 * 60 * 1000;
+
+function generateMockAccessToken(user) {
+  const payload = {
+    username: user.username,
+    email: user.email,
+    issuedAt: Date.now(),
+  };
+
+  return btoa(JSON.stringify(payload));
+}
 
 export default function Login() {
   const navigate = useNavigate();
@@ -23,7 +37,9 @@ export default function Login() {
     }
 
     const user = users.find(
-      (u) => u.username === identifier || u.email === identifier
+      (u) =>
+        u.username === identifier ||
+        u.email === identifier
     );
 
     if (!user) {
@@ -36,10 +52,15 @@ export default function Login() {
       return;
     }
 
-    setError("");
+    const accessToken = generateMockAccessToken(user);
+    const tokenExpiredAt = Date.now() + TOKEN_DURATION_MS;
 
     localStorage.setItem("isLogin", "true");
     localStorage.setItem("username", user.username);
+    localStorage.setItem("accessToken", accessToken);
+    localStorage.setItem("tokenExpiredAt", String(tokenExpiredAt));
+
+    setError("");
 
     window.location.href = "/";
   };
@@ -51,10 +72,8 @@ export default function Login() {
     >
       {/* CARD */}
       <div className="login-card relative z-10 flex">
-
         {/* LEFT */}
         <div className="w-1/2 p-10 flex flex-col justify-center">
-
           <h1 className="login-title">Login</h1>
 
           <p className="login-subtitle">
@@ -62,7 +81,6 @@ export default function Login() {
           </p>
 
           <form onSubmit={handleLogin} className="space-y-4">
-
             <input
               type="text"
               placeholder="Email or Username"
@@ -86,7 +104,9 @@ export default function Login() {
             />
 
             {error && (
-              <p className="error-text">{error}</p>
+              <p className="error-text">
+                {error}
+              </p>
             )}
 
             <div className="flex justify-end text-sm">
