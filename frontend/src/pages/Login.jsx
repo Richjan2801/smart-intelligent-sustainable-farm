@@ -6,20 +6,11 @@ import bg from "../assets/bg-login.jpg";
 import sideBg from "../assets/bg-side.jpg";
 
 import { users } from "../mock/MockData";
+import { generateMockAccessToken } from "../utils/session";
 
 import "../styles/auth.css";
 
 const TOKEN_DURATION_MS = 24 * 60 * 60 * 1000;
-
-function generateMockAccessToken(user) {
-  const payload = {
-    username: user.username,
-    email: user.email,
-    issuedAt: Date.now(),
-  };
-
-  return btoa(JSON.stringify(payload));
-}
 
 export default function Login() {
   const navigate = useNavigate();
@@ -124,7 +115,7 @@ export default function Login() {
           </form>
 
           <p className="text-sm text-gray-500 mt-6 text-center">
-            Don’t have an account?{" "}
+            Don't have an account?{" "}
             <span
               onClick={() => navigate("/register")}
               className="auth-link"

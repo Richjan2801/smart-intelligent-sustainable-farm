@@ -4,20 +4,26 @@ import Sidebar from "../components/Sidebar";
 import Header from "../components/Header";
 import ChartCard from "../components/ChartCard";
 import Chatbot from "../components/Chatbot";
+import SectionTitle from "../components/SectionTitle";
+import RangeFilter from "../components/RangeFilter";
+import StatusBadge from "../components/StatusBadge";
+import IndicatorLegend from "../components/IndicatorLegend";
+import PredictionPlaceholder from "../components/PredictionPlaceholder";
 
 import { lang } from "../utils/lang";
 import { useConfig } from "../context/ConfigContext";
+import {
+  transformHistoryRows,
+  getTemperatureStatus,
+  getHumidityStatus,
+  convertTemp,
+  resolveLatestValues,
+  resolveLabels,
+} from "../utils/telemetry";
 
 import "../styles/dashboard.css";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
-
-const RANGE_OPTIONS = [
-  { value: "1h", label: "1 Hour" },
-  { value: "1d", label: "1 Day" },
-  { value: "7d", label: "7 Days" },
-  { value: "30d", label: "30 Days" },
-];
 
 export default function Dashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -39,10 +45,10 @@ export default function Dashboard() {
   const humidityDomain = [0, 100];
 
   const statusText = {
-    low: t.low || "LOW",
-    normal: t.normal || "NORMAL",
-    warning: t.warning || "HIGH",
-    danger: t.danger || "VERY HIGH",
+    low: t.low,
+    normal: t.normal,
+    warning: t.warning,
+    danger: t.danger,
   };
 
   const checkDb = useCallback(async () => {
@@ -101,25 +107,7 @@ export default function Dashboard() {
 
         const json = await res.json();
         const rows = json.data || [];
-
-        const transformed = rows
-          .map((row) => ({
-            time: new Date(row.recorded_at).toLocaleString([], {
-              month: "short",
-              day: "numeric",
-              hour: "2-digit",
-              minute: "2-digit",
-            }),
-            temp: row.tem != null ? Number(row.tem) : null,
-            hum: row.hum != null ? Number(row.hum) : null,
-            recordedAt: row.recorded_at,
-            devStatus: row.dev_status,
-          }))
-          .sort(
-            (a, b) =>
-              new Date(a.recordedAt).getTime() -
-              new Date(b.recordedAt).getTime()
-          );
+        const transformed = transformHistoryRows(rows);
 
         cacheRef.current[selectedRange] = transformed;
         setHistoryData(transformed);
@@ -161,65 +149,25 @@ export default function Dashboard() {
     setRange(newRange);
   };
 
-  const convertTemp = (val) =>
-    config.tempUnit === "C" ? val : (val * 9) / 5 + 32;
+  const {
+    latestTempRaw,
+    latestHumRaw,
+    latestValidData,
+    isUsingLatestValidFallback,
+  } = resolveLatestValues(latest, historyData);
 
-  const latestValidData = [...historyData]
-    .reverse()
-    .find((item) => item.temp != null && item.hum != null);
-
-  const latestTempFromApi =
-    latest && latest.tem != null ? Number(latest.tem) : null;
-
-  const latestHumFromApi =
-    latest && latest.hum != null ? Number(latest.hum) : null;
-
-  const latestTempRaw =
-    latestTempFromApi != null
-      ? latestTempFromApi
-      : latestValidData
-        ? latestValidData.temp
-        : null;
-
-  const latestHumRaw =
-    latestHumFromApi != null
-      ? latestHumFromApi
-      : latestValidData
-        ? latestValidData.hum
-        : null;
-
-  const isUsingLatestValidFallback =
-    (latestTempFromApi == null || latestHumFromApi == null) &&
-    latestValidData != null;
-
-  const temperatureLabel =
-    deviceStatus === "online" && !isUsingLatestValidFallback
-      ? config.language === "EN"
-        ? "Current Temperature"
-        : "Suhu Saat Ini"
-      : latestValidData
-        ? config.language === "EN"
-          ? "Latest Temperature"
-          : "Suhu Terbaru"
-        : config.language === "EN"
-          ? "Current Temperature"
-          : "Suhu Saat Ini";
-
-  const humidityLabel =
-    deviceStatus === "online" && !isUsingLatestValidFallback
-      ? config.language === "EN"
-        ? "Current Humidity"
-        : "Kelembapan Saat Ini"
-      : latestValidData
-        ? config.language === "EN"
-          ? "Latest Humidity"
-          : "Kelembapan Terbaru"
-        : config.language === "EN"
-          ? "Current Humidity"
-          : "Kelembapan Saat Ini";
+  const { temperatureLabel, humidityLabel } = resolveLabels(
+    deviceStatus,
+    isUsingLatestValidFallback,
+    latestValidData,
+    config.language,
+    t
+  );
 
   const latestTemp =
-    latestTempRaw != null ? convertTemp(latestTempRaw).toFixed(1) : "--";
+    latestTempRaw != null
+      ? convertTemp(latestTempRaw, config.tempUnit).toFixed(1)
+      : "--";
 
   const latestHum =
     latestHumRaw != null ? latestHumRaw.toFixed(1) : "--";
@@ -227,88 +175,21 @@ export default function Dashboard() {
   const chartData = historyData.map((item) => ({
     ...item,
     displayTemp:
-      item.temp != null ? convertTemp(item.temp) : null,
+      item.temp != null ? convertTemp(item.temp, config.tempUnit) : null,
   }));
-
-  const getTemperatureStatus = (value) => {
-    if (value == null || isNaN(value)) return null;
-
-    const tempInC =
-      config.tempUnit === "C" ? value : ((value - 32) * 5) / 9;
-
-    if (tempInC < 24) {
-      return {
-        label: statusText.low,
-        className: "status-low",
-        color: "#2563eb",
-      };
-    }
-
-    if (tempInC <= 30) {
-      return {
-        label: statusText.normal,
-        className: "status-normal",
-        color: "#16a34a",
-      };
-    }
-
-    if (tempInC <= 33) {
-      return {
-        label: statusText.warning,
-        className: "status-warning",
-        color: "#f97316",
-      };
-    }
-
-    return {
-      label: statusText.danger,
-      className: "status-danger",
-      color: "#dc2626",
-    };
-  };
-
-  const getHumidityStatus = (value) => {
-    if (value == null || isNaN(value)) return null;
-
-    if (value < 50) {
-      return {
-        label: statusText.low,
-        className: "status-low",
-        color: "#2563eb",
-      };
-    }
-
-    if (value <= 70) {
-      return {
-        label: statusText.normal,
-        className: "status-normal",
-        color: "#16a34a",
-      };
-    }
-
-    if (value <= 80) {
-      return {
-        label: statusText.warning,
-        className: "status-warning",
-        color: "#f97316",
-      };
-    }
-
-    return {
-      label: statusText.danger,
-      className: "status-danger",
-      color: "#dc2626",
-    };
-  };
 
   const tempStatus =
     latestTempRaw != null
-      ? getTemperatureStatus(convertTemp(latestTempRaw))
+      ? getTemperatureStatus(
+          convertTemp(latestTempRaw, config.tempUnit),
+          statusText,
+          config.tempUnit
+        )
       : null;
 
   const humStatus =
     latestHumRaw != null
-      ? getHumidityStatus(latestHumRaw)
+      ? getHumidityStatus(latestHumRaw, statusText)
       : null;
 
   return (
@@ -373,7 +254,7 @@ export default function Dashboard() {
             <div className="chart-with-value">
               <div className="chart-card-container">
                 <p className="chart-title">
-                  {t.actualTemp || "Actual Temperature"}
+                  {t.actualTemp}
                 </p>
 
                 {loading ? (
@@ -383,7 +264,9 @@ export default function Dashboard() {
                     data={chartData}
                     dataKey="displayTemp"
                     color={actualLineColor}
-                    getStatus={getTemperatureStatus}
+                    getStatus={(v) =>
+                      getTemperatureStatus(v, statusText, config.tempUnit)
+                    }
                     yDomain={temperatureDomain}
                   />
                 )}
@@ -408,7 +291,7 @@ export default function Dashboard() {
 
             <div className="prediction-card">
               <p className="chart-title">
-                {t.predictedTemp || "Predicted Temperature"}
+                {t.predictedTemp}
               </p>
 
               <PredictionPlaceholder language={config.language} />
@@ -424,7 +307,7 @@ export default function Dashboard() {
             <div className="chart-with-value">
               <div className="chart-card-container">
                 <p className="chart-title">
-                  {t.actualHum || "Actual Humidity"}
+                  {t.actualHum}
                 </p>
 
                 {loading ? (
@@ -434,7 +317,7 @@ export default function Dashboard() {
                     data={chartData}
                     dataKey="hum"
                     color={actualLineColor}
-                    getStatus={getHumidityStatus}
+                    getStatus={(v) => getHumidityStatus(v, statusText)}
                     yDomain={humidityDomain}
                   />
                 )}
@@ -459,7 +342,7 @@ export default function Dashboard() {
 
             <div className="prediction-card">
               <p className="chart-title">
-                {t.predictedHum || "Predicted Humidity"}
+                {t.predictedHum}
               </p>
 
               <PredictionPlaceholder language={config.language} />
@@ -469,77 +352,6 @@ export default function Dashboard() {
           <Chatbot />
         </div>
       </div>
-    </div>
-  );
-}
-
-function SectionTitle({ title }) {
-  return (
-    <div className="section-title-container">
-      <h2 className="section-title">{title}</h2>
-      <div className="section-line"></div>
-    </div>
-  );
-}
-
-function RangeFilter({ range, onChange }) {
-  return (
-    <div className="range-filter-row">
-      {RANGE_OPTIONS.map((opt) => (
-        <button
-          key={opt.value}
-          onClick={() => onChange(opt.value)}
-          className={`range-btn ${
-            range === opt.value ? "range-btn-active" : ""
-          }`}
-        >
-          {opt.label}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-function StatusBadge({ status }) {
-  return (
-    <div className={`status-badge ${status.className}`}>
-      {status.label}
-    </div>
-  );
-}
-
-function IndicatorLegend({ statusText }) {
-  return (
-    <div className="indicator-info">
-      <span className="indicator-dot status-low-bg"></span>
-      <span>{statusText.low}</span>
-
-      <span className="indicator-dot status-normal-bg"></span>
-      <span>{statusText.normal}</span>
-
-      <span className="indicator-dot status-warning-bg"></span>
-      <span>{statusText.warning}</span>
-
-      <span className="indicator-dot status-danger-bg"></span>
-      <span>{statusText.danger}</span>
-    </div>
-  );
-}
-
-function PredictionPlaceholder({ language }) {
-  return (
-    <div className="prediction-placeholder">
-      <p className="prediction-placeholder-title">
-        {language === "EN"
-          ? "Prediction data is not available yet"
-          : "Data prediksi belum tersedia"}
-      </p>
-
-      <p className="prediction-placeholder-text">
-        {language === "EN"
-          ? "This section will display AI prediction results after the AI service is integrated."
-          : "Bagian ini akan menampilkan hasil prediksi AI setelah layanan AI terintegrasi."}
-      </p>
     </div>
   );
 }

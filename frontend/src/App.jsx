@@ -1,47 +1,14 @@
 import { useEffect, useState } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 
+import { clearSession, isSessionValid } from "./utils/session";
+
 import Dashboard from "./pages/Dashboard";
 import Settings from "./pages/Settings";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
-
-function clearSession() {
-  // Current mock-token session keys
-  localStorage.removeItem("isLogin");
-  localStorage.removeItem("username");
-  localStorage.removeItem("accessToken");
-  localStorage.removeItem("tokenExpiredAt");
-
-  // Old / alternative auth keys cleanup
-  localStorage.removeItem("access_token");
-  localStorage.removeItem("authToken");
-  localStorage.removeItem("refresh_token");
-  localStorage.removeItem("user");
-  localStorage.removeItem("userEmail");
-  localStorage.removeItem("userName");
-  localStorage.removeItem("userRole");
-}
-
-function isSessionValid() {
-  const isLogin = localStorage.getItem("isLogin") === "true";
-  const accessToken = localStorage.getItem("accessToken");
-  const tokenExpiredAt = Number(localStorage.getItem("tokenExpiredAt"));
-
-  if (!isLogin || !accessToken || !tokenExpiredAt) {
-    clearSession();
-    return false;
-  }
-
-  if (Date.now() >= tokenExpiredAt) {
-    clearSession();
-    return false;
-  }
-
-  return true;
-}
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] =

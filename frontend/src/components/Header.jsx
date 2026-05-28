@@ -7,25 +7,9 @@ import {
 
 import { useConfig } from "../context/ConfigContext";
 import { lang } from "../utils/lang";
+import { clearSession } from "../utils/session";
 
 import "../styles/header.css";
-
-function clearSession() {
-  // Current mock-token session keys
-  localStorage.removeItem("isLogin");
-  localStorage.removeItem("username");
-  localStorage.removeItem("accessToken");
-  localStorage.removeItem("tokenExpiredAt");
-
-  // Old / alternative auth keys cleanup
-  localStorage.removeItem("access_token");
-  localStorage.removeItem("authToken");
-  localStorage.removeItem("refresh_token");
-  localStorage.removeItem("user");
-  localStorage.removeItem("userEmail");
-  localStorage.removeItem("userName");
-  localStorage.removeItem("userRole");
-}
 
 export default function Header() {
   const [open, setOpen] = useState(false);

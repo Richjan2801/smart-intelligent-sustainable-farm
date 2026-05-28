@@ -2,6 +2,8 @@ import { useState } from "react";
 
 import Sidebar from "../components/Sidebar";
 import Header from "../components/Header";
+import SectionTitle from "../components/SectionTitle";
+import Toggle from "../components/Toggle";
 
 import { useConfig } from "../context/ConfigContext";
 import { lang } from "../utils/lang";
@@ -136,47 +138,6 @@ export default function Settings() {
           </div>
         </div>
       </div>
-    </div>
-  );
-}
-
-function SectionTitle({ title }) {
-  return (
-    <div className="section-title-container">
-      <h2 className="section-title">
-        {title}
-      </h2>
-
-      <div className="section-line"></div>
-    </div>
-  );
-}
-
-function Toggle({
-  left,
-  right,
-  value,
-  setValue,
-}) {
-  return (
-    <div className="toggle-container">
-      <button
-        onClick={() => setValue(left)}
-        className={`toggle-button ${
-          value === left ? "active" : ""
-        }`}
-      >
-        {left}
-      </button>
-
-      <button
-        onClick={() => setValue(right)}
-        className={`toggle-button ${
-          value === right ? "active" : ""
-        }`}
-      >
-        {right}
-      </button>
     </div>
   );
 }
