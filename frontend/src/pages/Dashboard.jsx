@@ -44,17 +44,25 @@ export default function Dashboard() {
   const temperatureDomain = ["dataMin - 2", "dataMax + 2"];
   const humidityDomain = [0, 100];
 
+  const rangeOptions = [
+    { value: "1h", label: t.oneHour },
+    { value: "1d", label: t.oneDay },
+    { value: "7d", label: t.sevenDays },
+    { value: "30d", label: t.thirtyDays },
+  ];
+
   const statusText = {
     low: t.low,
     normal: t.normal,
-    warning: t.warning,
-    danger: t.danger,
+    warning: t.high || t.warning,
+    danger: t.veryHigh || t.danger,
   };
 
   const checkDb = useCallback(async () => {
     try {
       const res = await fetch(`${API_URL}/api/db/status`);
       if (!res.ok) throw new Error();
+
       setDbError(false);
     } catch {
       setDbError(true);
@@ -206,7 +214,7 @@ export default function Dashboard() {
         <div className="dashboard-content space-y-12">
           {dbError && (
             <div className="db-error-banner">
-              Database connection error
+              {t.databaseError}
             </div>
           )}
 
@@ -217,7 +225,7 @@ export default function Dashboard() {
             <div className="device-row">
               <select className="device-select">
                 {config.devices.length === 0 ? (
-                  <option disabled>Loading devices...</option>
+                  <option disabled>{t.loadingDevices}</option>
                 ) : (
                   config.devices.map((d) => (
                     <option key={d.id} value={d.id}>
@@ -235,7 +243,7 @@ export default function Dashboard() {
                 }`}
               >
                 <span className="device-status-dot"></span>
-                {deviceStatus === "online" ? "Online" : "Offline"}
+                {deviceStatus === "online" ? t.online : t.offline}
               </div>
             </div>
           </div>
@@ -247,6 +255,7 @@ export default function Dashboard() {
             <RangeFilter
               range={range}
               onChange={handleRangeChange}
+              options={rangeOptions}
             />
 
             <IndicatorLegend statusText={statusText} />
@@ -258,16 +267,16 @@ export default function Dashboard() {
                 </p>
 
                 {loading ? (
-                  <p className="chart-loading">Loading...</p>
+                  <p className="chart-loading">{t.loading}</p>
                 ) : (
                   <ChartCard
                     data={chartData}
                     dataKey="displayTemp"
                     color={actualLineColor}
-                    getStatus={(v) =>
-                      getTemperatureStatus(v, statusText, config.tempUnit)
-                    }
                     yDomain={temperatureDomain}
+                    range={range}
+                    tooltipName={t.temperature}
+                    unit={`°${config.tempUnit}`}
                   />
                 )}
               </div>
@@ -294,7 +303,7 @@ export default function Dashboard() {
                 {t.predictedTemp}
               </p>
 
-              <PredictionPlaceholder language={config.language} />
+              <PredictionPlaceholder t={t} />
             </div>
           </div>
 
@@ -311,14 +320,16 @@ export default function Dashboard() {
                 </p>
 
                 {loading ? (
-                  <p className="chart-loading">Loading...</p>
+                  <p className="chart-loading">{t.loading}</p>
                 ) : (
                   <ChartCard
                     data={chartData}
                     dataKey="hum"
                     color={actualLineColor}
-                    getStatus={(v) => getHumidityStatus(v, statusText)}
                     yDomain={humidityDomain}
+                    range={range}
+                    tooltipName={t.humidity}
+                    unit="%"
                   />
                 )}
               </div>
@@ -345,7 +356,7 @@ export default function Dashboard() {
                 {t.predictedHum}
               </p>
 
-              <PredictionPlaceholder language={config.language} />
+              <PredictionPlaceholder t={t} />
             </div>
           </div>
 

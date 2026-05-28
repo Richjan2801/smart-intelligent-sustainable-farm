@@ -35,7 +35,7 @@ export default function Header() {
         </h1>
 
         <p className="header-subtitle">
-          Monitoring sensor data in real-time
+          {t.headerSubtitle}
         </p>
       </div>
 

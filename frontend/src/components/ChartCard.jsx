@@ -15,84 +15,118 @@ export default function ChartCard({
   dataKey,
   color = "#64748b",
   dashed = false,
-  getStatus,
   yDomain = ["dataMin - 2", "dataMax + 2"],
+  range = "1h",
+  tooltipName = "Value",
+  unit = "",
 }) {
   const hasValidData =
     data &&
     data.length > 0 &&
-    data.some((item) => item[dataKey] !== null && item[dataKey] !== undefined);
+    data.some(
+      (item) =>
+        item[dataKey] !== null &&
+        item[dataKey] !== undefined
+    );
 
   if (!hasValidData) {
     return (
       <div className="chart-empty-wrapper">
-        <p className="chart-empty">No data available</p>
+        <p className="chart-empty">
+          No data available
+        </p>
       </div>
     );
   }
 
-  const getDotColor = (payload) => {
-    if (!payload || payload[dataKey] === null || payload[dataKey] === undefined) {
-      return color;
+  const formatXAxisTick = (value) => {
+    if (!value) return "";
+
+    const date = new Date(value);
+
+    if (Number.isNaN(date.getTime())) {
+      return value;
     }
 
-    if (!getStatus) {
-      return color;
+    if (range === "1h" || range === "1d") {
+      return date.toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false,
+      });
     }
 
-    const status = getStatus(payload[dataKey]);
-    return status?.color || color;
+    return date.toLocaleDateString([], {
+      month: "short",
+      day: "numeric",
+    });
   };
 
-  const CustomDot = (props) => {
-    const { cx, cy, payload } = props;
+  const formatTooltipLabel = (value) => {
+    if (!value) return "";
 
-    if (cx === undefined || cy === undefined) {
-      return null;
+    const date = new Date(value);
+
+    if (Number.isNaN(date.getTime())) {
+      return value;
     }
 
-    return (
-      <circle
-        cx={cx}
-        cy={cy}
-        r={7}
-        fill={getDotColor(payload)}
-        stroke="white"
-        strokeWidth={3}
-      />
-    );
+    return date.toLocaleString([], {
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    });
   };
 
-  const CustomActiveDot = (props) => {
-    const { cx, cy, payload } = props;
-
-    if (cx === undefined || cy === undefined) {
-      return null;
+  const formatTooltipValue = (value) => {
+    if (value === null || value === undefined) {
+      return ["-", tooltipName];
     }
 
-    return (
-      <circle
-        cx={cx}
-        cy={cy}
-        r={9}
-        fill={getDotColor(payload)}
-        stroke="white"
-        strokeWidth={3}
-      />
-    );
+    const numericValue = Number(value);
+    const displayValue = Number.isNaN(numericValue)
+      ? value
+      : numericValue.toFixed(1);
+
+    return [`${displayValue}${unit}`, tooltipName];
   };
 
   return (
     <div className="chart-card">
-      <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={data}>
+      <ResponsiveContainer
+        width="100%"
+        height="100%"
+      >
+        <LineChart
+          data={data}
+          margin={{
+            top: 16,
+            right: 24,
+            left: 8,
+            bottom: 12,
+          }}
+        >
           <CartesianGrid strokeDasharray="3 3" />
 
-          <XAxis dataKey="time" />
+          <XAxis
+            dataKey="recordedAt"
+            interval="preserveStartEnd"
+            minTickGap={48}
+            tickMargin={10}
+            tickFormatter={formatXAxisTick}
+          />
 
-          <YAxis domain={yDomain} />
+          <YAxis
+            domain={yDomain}
+            tickMargin={8}
+          />
 
-          <Tooltip />
+          <Tooltip
+            labelFormatter={formatTooltipLabel}
+            formatter={formatTooltipValue}
+          />
 
           <Line
             type="monotone"
@@ -101,8 +135,8 @@ export default function ChartCard({
             strokeWidth={3}
             strokeDasharray={dashed ? "8 6" : ""}
             connectNulls={false}
-            dot={<CustomDot />}
-            activeDot={<CustomActiveDot />}
+            dot={false}
+            activeDot={false}
           />
         </LineChart>
       </ResponsiveContainer>
