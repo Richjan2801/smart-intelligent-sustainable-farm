@@ -252,6 +252,10 @@ export default function Dashboard() {
           <div className="dashboard-section">
             <SectionTitle title={t.temperature} />
 
+            <p className="range-description">
+              {t.rangeDescription}
+            </p>
+
             <RangeFilter
               range={range}
               onChange={handleRangeChange}

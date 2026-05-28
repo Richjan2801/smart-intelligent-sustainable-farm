@@ -34,6 +34,8 @@ export const lang = {
     oneDay: "1 Day",
     sevenDays: "7 Days",
     thirtyDays: "30 Days",
+    rangeDescription:
+      "Select the sensor data time range displayed on the chart.",
 
     low: "LOW",
     normal: "NORMAL",
@@ -87,6 +89,8 @@ export const lang = {
     oneDay: "1 Hari",
     sevenDays: "7 Hari",
     thirtyDays: "30 Hari",
+    rangeDescription:
+      "Pilih rentang waktu data sensor yang ditampilkan pada grafik.",
 
     low: "RENDAH",
     normal: "NORMAL",
