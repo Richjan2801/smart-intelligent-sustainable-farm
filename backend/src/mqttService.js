@@ -25,16 +25,18 @@ mqttClient.on('connect', () => {
 });
 
 mqttClient.on('message', async (_topic, message) => {
-  resetWatchdog();
-
   try {
-    const { temperature, humidity, offline_buffered } = JSON.parse(
-      message.toString()
-    );
+    const payload = JSON.parse(message.toString());
+    const { temperature, humidity, offline_buffered } = payload;
 
     if (temperature == null || humidity == null) return;
 
     const devStatus = offline_buffered ? 'offline' : 'online';
+
+    // Only reset watchdog for LIVE messages — buffered data is historical
+    if (!offline_buffered) {
+      resetWatchdog();
+    }
 
     await insertSensorData({
       devId: DEVICE_ID,
@@ -44,7 +46,8 @@ mqttClient.on('message', async (_topic, message) => {
     });
 
     console.log(
-      `[DB] Inserted — status: ${devStatus}, temp: ${temperature}, hum: ${humidity}`
+      `[DB] Inserted — status: ${devStatus}, temp: ${temperature}, hum: ${humidity}` +
+      (offline_buffered ? ' (buffered)' : '')
     );
   } catch (err) {
     console.error('[Error]', err.message);

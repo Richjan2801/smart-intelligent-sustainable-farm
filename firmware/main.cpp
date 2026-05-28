@@ -11,7 +11,7 @@ CircularBuffer buffer;
 MqttClient     mqtt;
 PumpController pump;
 
-unsigned long lastReadMs    = 0;
+unsigned long lastReadMs    = 0 - READ_INTERVAL_MS;   // fire immediately on first loop
 unsigned long lastReconnect = 0;
 static bool   _flushing     = false;
 

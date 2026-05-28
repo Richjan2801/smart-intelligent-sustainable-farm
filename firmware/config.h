@@ -15,7 +15,7 @@
 #define MAX_BUFFER_SIZE 50
 
 // Timing
-#define READ_INTERVAL_MS   5000
+#define READ_INTERVAL_MS   60000
 #define RECONNECT_DELAY_MS 5000
 
 // TLS — ISRG Root X1

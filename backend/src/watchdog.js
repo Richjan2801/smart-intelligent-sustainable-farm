@@ -3,7 +3,10 @@ import { insertSensorData } from './db.js';
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 export const DEVICE_ID = Number(process.env.DEFAULT_DEVICE_ID) || 1;
-const DEVICE_TIMEOUT = Number(process.env.DEVICE_TIMEOUT_MS) || 30000;
+const SENSOR_INTERVAL = Number(process.env.SENSOR_INTERVAL_MS) || 60000;
+// Timeout = sensor interval × 2 + 5 s margin (override with DEVICE_TIMEOUT_MS)
+const DEVICE_TIMEOUT =
+  Number(process.env.DEVICE_TIMEOUT_MS) || SENSOR_INTERVAL * 2 + 5000;
 const OFFLINE_THRESHOLD = Number(process.env.OFFLINE_THRESHOLD) || 3;
 
 // ── State ─────────────────────────────────────────────────────────────────────
@@ -22,6 +25,11 @@ let deviceMarkedOffline = false;
  */
 export function startWatchdog() {
   if (watchdogInterval) clearInterval(watchdogInterval);
+
+  console.log(
+    `[Watchdog] Started — timeout ${DEVICE_TIMEOUT / 1000}s, ` +
+    `threshold ${OFFLINE_THRESHOLD} misses`
+  );
 
   lastMessageTime = Date.now();
   missCount = 0;
