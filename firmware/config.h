@@ -5,11 +5,11 @@
 #define DHT_TYPE DHT11
 
 // Pump (IRLZ44N MOSFET Gate)
-#define PUMP_PIN          18      // GPIO ke Gate IRLZ44N
+#define PUMP_PIN          18
 #define TEMP_THRESHOLD    30.0f   // °C
-#define HUM_THRESHOLD     60.0f   // % 
+#define HUM_THRESHOLD     40.0f   // % 
 #define PUMP_ON_DURATION  10000   // ms
-#define PUMP_COOLDOWN     30000   // ms
+#define PUMP_COOLDOWN     30000
 
 // Buffer
 #define MAX_BUFFER_SIZE 50
@@ -18,7 +18,7 @@
 #define READ_INTERVAL_MS   5000
 #define RECONNECT_DELAY_MS 5000
 
-// TLS — ISRG Root X1 (HiveMQ Cloud / Let's Encrypt)
+// TLS — ISRG Root X1
 const char MQTT_CA_CERT[] PROGMEM = R"EOF(
 -----BEGIN CERTIFICATE-----
 MIIFBTCCAu2gAwIBAgIQWgDyEtjUtIDzkkFX6imDBTANBgkqhkiG9w0BAQsFADBP

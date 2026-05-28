@@ -15,7 +15,6 @@ unsigned long lastReadMs    = 0;
 unsigned long lastReconnect = 0;
 static bool   _flushing     = false;
 
-// ── Blocking WiFi — used ONLY during setup() (pump not active at boot) ──────
 void connectWiFiBlocking() {
     if (WiFi.status() == WL_CONNECTED) return;
     Serial.printf("[WiFi] Connecting to %s", WIFI_SSID);
@@ -36,7 +35,7 @@ void flushBuffer() {
 
     SensorPayload p;
     while (buffer.peek(p)) {
-        pump.update();  // keep pump safe during flush
+        pump.update();
         if (!mqtt.isConnected()) {
             Serial.println("[Buffer] Connection lost during flush — aborting.");
             break;
@@ -70,25 +69,21 @@ void setup() {
     dht.begin();
     pump.begin();
     mqtt.begin();
-    connectWiFiBlocking();  // OK to block at boot — pump not active yet
+    connectWiFiBlocking();
     if (WiFi.status() == WL_CONNECTED) mqtt.connect();
 }
 
 void loop() {
-    // ── SAFETY FIRST: pump auto-off must NEVER be starved ─────────────────
     pump.update();
     mqtt.loop();
 
-    // ── Non-blocking WiFi + MQTT reconnection ────────────────────────────
     if (!_flushing && millis() - lastReconnect >= RECONNECT_DELAY_MS) {
         lastReconnect = millis();
         if (WiFi.status() != WL_CONNECTED) {
-            // Non-blocking: kick off WiFi.begin() and return to loop()
             WiFi.disconnect(true);
             WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
             Serial.printf("[WiFi] Reconnecting to %s (non-blocking)...\n", WIFI_SSID);
         } else if (!mqtt.isConnected()) {
-            // WiFi is up but MQTT dropped — attempt reconnect
             if (mqtt.connect()) flushBuffer();
         }
     }

@@ -12,7 +12,6 @@ public:
         Serial.println("[Pump] Initialized.");
     }
 
-    // Dipanggil setiap loop() — mengelola auto-off berdasarkan durasi
     void update() {
         if (!_pumpOn) return;
 
@@ -21,7 +20,6 @@ public:
         }
     }
 
-    // Dipanggil setelah baca sensor — cek kondisi dan nyalakan jika perlu
     void evaluate(float temp, float hum) {
         bool shouldRun = (temp > TEMP_THRESHOLD) || (hum < HUM_THRESHOLD);
 
@@ -55,7 +53,6 @@ private:
     }
 
     bool cooldownElapsed() const {
-        // Pertama kali (_lastOffMs == 0) langsung boleh nyala
         return (_lastOffMs == 0) || (millis() - _lastOffMs >= PUMP_COOLDOWN);
     }
 };
