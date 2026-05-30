@@ -11,11 +11,11 @@ CircularBuffer buffer;
 MqttClient     mqtt;
 PumpController pump;
 
-unsigned long lastReadMs    = 0;
+unsigned long lastReadMs    = 0 - READ_INTERVAL_MS;   // fire immediately on first loop
 unsigned long lastReconnect = 0;
 static bool   _flushing     = false;
 
-void connectWiFi() {
+void connectWiFiBlocking() {
     if (WiFi.status() == WL_CONNECTED) return;
     Serial.printf("[WiFi] Connecting to %s", WIFI_SSID);
     WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
@@ -35,6 +35,7 @@ void flushBuffer() {
 
     SensorPayload p;
     while (buffer.peek(p)) {
+        pump.update();
         if (!mqtt.isConnected()) {
             Serial.println("[Buffer] Connection lost during flush — aborting.");
             break;
@@ -68,18 +69,21 @@ void setup() {
     dht.begin();
     pump.begin();
     mqtt.begin();
-    connectWiFi();
+    connectWiFiBlocking();
     if (WiFi.status() == WL_CONNECTED) mqtt.connect();
 }
 
 void loop() {
-    mqtt.loop();
     pump.update();
+    mqtt.loop();
 
     if (!_flushing && millis() - lastReconnect >= RECONNECT_DELAY_MS) {
         lastReconnect = millis();
-        if (WiFi.status() != WL_CONNECTED) connectWiFi();
-        if (WiFi.status() == WL_CONNECTED && !mqtt.isConnected()) {
+        if (WiFi.status() != WL_CONNECTED) {
+            WiFi.disconnect(true);
+            WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+            Serial.printf("[WiFi] Reconnecting to %s (non-blocking)...\n", WIFI_SSID);
+        } else if (!mqtt.isConnected()) {
             if (mqtt.connect()) flushBuffer();
         }
     }
