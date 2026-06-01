@@ -1,0 +1,7 @@
+services:
+  xgb-api:
+    build: .
+    container_name: xgb-api
+    ports:
+      - "5000:5000"
+    restart: unless-stopped
