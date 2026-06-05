@@ -1,34 +1,77 @@
 /**
- * Session utilities — pure helpers, no React, no side effects beyond localStorage.
+ * Session utilities — JWT based session helpers.
  * Used by: App.jsx, Header.jsx, Login.jsx
  */
 
-/**
- * Removes all session-related keys from localStorage.
- * Covers both the current mock-token keys and legacy / alternative auth keys.
- */
 export function clearSession() {
-  // Current mock-token session keys
   localStorage.removeItem("isLogin");
   localStorage.removeItem("username");
   localStorage.removeItem("accessToken");
   localStorage.removeItem("tokenExpiredAt");
+  localStorage.removeItem("mock_api");
 
-  // Old / alternative auth keys cleanup
-  localStorage.removeItem("access_token");
-  localStorage.removeItem("authToken");
-  localStorage.removeItem("refresh_token");
   localStorage.removeItem("user");
   localStorage.removeItem("userEmail");
   localStorage.removeItem("userName");
   localStorage.removeItem("userRole");
+
+  localStorage.removeItem("access_token");
+  localStorage.removeItem("authToken");
+  localStorage.removeItem("refresh_token");
 }
 
-/**
- * Returns true when a non-expired session exists in localStorage.
- * Clears the session automatically if any required key is missing or the
- * token has expired.
- */
+function decodeJwtPayload(token) {
+  try {
+    const payload = token.split(".")[1];
+
+    if (!payload) {
+      return null;
+    }
+
+    const normalizedPayload = payload
+      .replace(/-/g, "+")
+      .replace(/_/g, "/");
+
+    const decodedPayload = atob(normalizedPayload);
+
+    return JSON.parse(decodedPayload);
+  } catch {
+    return null;
+  }
+}
+
+export function getTokenExpiredAt(token) {
+  const payload = decodeJwtPayload(token);
+
+  if (!payload || !payload.exp) {
+    return null;
+  }
+
+  return payload.exp * 1000;
+}
+
+export function saveSession({ accessToken, user, tokenExpiredAt }) {
+  const resolvedTokenExpiredAt =
+    tokenExpiredAt || getTokenExpiredAt(accessToken);
+
+  if (!accessToken || !user || !resolvedTokenExpiredAt) {
+    clearSession();
+    return false;
+  }
+
+  localStorage.setItem("isLogin", "true");
+  localStorage.setItem("accessToken", accessToken);
+  localStorage.setItem("tokenExpiredAt", String(resolvedTokenExpiredAt));
+
+  localStorage.setItem("username", user.username || "User");
+  localStorage.setItem("user", JSON.stringify(user));
+  localStorage.setItem("userEmail", user.email || "");
+  localStorage.setItem("userName", user.username || "");
+  localStorage.setItem("userRole", user.role || "admin");
+
+  return true;
+}
+
 export function isSessionValid() {
   const isLogin = localStorage.getItem("isLogin") === "true";
   const accessToken = localStorage.getItem("accessToken");
@@ -47,17 +90,6 @@ export function isSessionValid() {
   return true;
 }
 
-/**
- * Generates a base64-encoded mock access token from a user object.
- * @param {{ username: string, email: string }} user
- * @returns {string} base64-encoded JSON payload
- */
-export function generateMockAccessToken(user) {
-  const payload = {
-    username: user.username,
-    email: user.email,
-    issuedAt: Date.now(),
-  };
-
-  return btoa(JSON.stringify(payload));
+export function getAccessToken() {
+  return localStorage.getItem("accessToken");
 }

@@ -5,12 +5,11 @@ import logo from "../assets/BRIN-PresUniv-SISF.png";
 import bg from "../assets/bg-login.jpg";
 import sideBg from "../assets/bg-side.jpg";
 
-import { users } from "../mock/MockData";
-import { generateMockAccessToken } from "../utils/session";
+import { saveSession } from "../utils/session";
 
 import "../styles/auth.css";
 
-const TOKEN_DURATION_MS = 24 * 60 * 60 * 1000;
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -18,8 +17,9 @@ export default function Login() {
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
 
     if (!identifier || !password) {
@@ -27,33 +27,46 @@ export default function Login() {
       return;
     }
 
-    const user = users.find(
-      (u) =>
-        u.username === identifier ||
-        u.email === identifier
-    );
-
-    if (!user) {
-      setError("Account not registered. Please register first.");
-      return;
-    }
-
-    if (user.password !== password) {
-      setError("Incorrect password.");
-      return;
-    }
-
-    const accessToken = generateMockAccessToken(user);
-    const tokenExpiredAt = Date.now() + TOKEN_DURATION_MS;
-
-    localStorage.setItem("isLogin", "true");
-    localStorage.setItem("username", user.username);
-    localStorage.setItem("accessToken", accessToken);
-    localStorage.setItem("tokenExpiredAt", String(tokenExpiredAt));
-
+    setLoading(true);
     setError("");
 
-    window.location.href = "/";
+    try {
+      const res = await fetch(`${API_URL}/api/auth/login`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          identifier,
+          password,
+        }),
+      });
+
+      const json = await res.json();
+
+      if (!res.ok || json.status !== "ok") {
+        setError(json.message || "Login failed.");
+        return;
+      }
+
+      const saved = saveSession({
+        accessToken: json.data.accessToken,
+        user: json.data.user,
+        tokenExpiredAt: json.data.tokenExpiredAt,
+      });
+
+      if (!saved) {
+        setError("Failed to save session.");
+        return;
+      }
+
+      navigate("/", { replace: true });
+      window.location.reload();
+    } catch {
+      setError("Unable to connect to server.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -109,8 +122,11 @@ export default function Login() {
               </span>
             </div>
 
-            <button className="auth-button">
-              Login
+            <button
+              className="auth-button"
+              disabled={loading}
+            >
+              {loading ? "Logging in..." : "Login"}
             </button>
           </form>
 
