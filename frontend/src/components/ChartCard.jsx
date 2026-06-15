@@ -8,6 +8,8 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
+import { useConfig } from "../context/ConfigContext";
+import { lang } from "../utils/lang";
 import "../styles/chartcard.css";
 
 export default function ChartCard({
@@ -20,6 +22,9 @@ export default function ChartCard({
   tooltipName = "Value",
   unit = "",
 }) {
+  
+  const { config } = useConfig();
+
   const hasValidData =
     data &&
     data.length > 0 &&
@@ -29,11 +34,13 @@ export default function ChartCard({
         item[dataKey] !== undefined
     );
 
+  const t = lang[config.language];
+
   if (!hasValidData) {
     return (
       <div className="chart-empty-wrapper">
         <p className="chart-empty">
-          No data available
+          {t.noData}
         </p>
       </div>
     );
