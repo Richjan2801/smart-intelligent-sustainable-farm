@@ -8,7 +8,7 @@ import SectionTitle from "../components/SectionTitle";
 import RangeFilter from "../components/RangeFilter";
 import StatusBadge from "../components/StatusBadge";
 import IndicatorLegend from "../components/IndicatorLegend";
-import PredictionPlaceholder from "../components/PredictionPlaceholder";
+import PredictionChart from "../components/PredictionChart";
 
 import { lang } from "../utils/lang";
 import { useConfig } from "../context/ConfigContext";
@@ -307,7 +307,7 @@ export default function Dashboard() {
                 {t.predictedTemp}
               </p>
 
-              <PredictionPlaceholder t={t} />
+              <PredictionChart type="temperature" />
             </div>
           </div>
 
@@ -360,7 +360,7 @@ export default function Dashboard() {
                 {t.predictedHum}
               </p>
 
-              <PredictionPlaceholder t={t} />
+              <PredictionChart type="humidity" />
             </div>
           </div>
 

@@ -390,4 +390,44 @@ router.get('/api/devices', async (_req, res) => {
   }
 });
 
+// ── /api/prediction ───────────────────────────────────────────────────────────
+
+const XGB_API_URL = process.env.XGB_API_URL || 'http://localhost:5000';
+
+router.get('/api/prediction', async (req, res) => {
+  try {
+    const horizon = req.query.horizon || '1d';
+    const validHorizons = ['1d', '3d', '7d', '30d'];
+
+    if (!validHorizons.includes(horizon)) {
+      return res.status(400).json({
+        status: 'error',
+        message: `Invalid horizon '${horizon}'. Valid options: ${validHorizons.join(', ')}`,
+      });
+    }
+
+    const response = await fetch(
+      `${XGB_API_URL}/forecast?horizon=${horizon}`
+    );
+
+    if (!response.ok) {
+      const errorBody = await response.text();
+      console.error(`[Prediction] Predictor returned ${response.status}: ${errorBody}`);
+      return res.status(502).json({
+        status: 'error',
+        message: 'Prediction service returned an error',
+      });
+    }
+
+    const data = await response.json();
+    return res.json(data);
+  } catch (err) {
+    console.error('[Prediction] Service unavailable:', err.message);
+    return res.status(503).json({
+      status: 'error',
+      message: 'Prediction service is unavailable',
+    });
+  }
+});
+
 export default router;

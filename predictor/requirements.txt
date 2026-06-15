@@ -5,3 +5,4 @@ gunicorn
 pandas
 joblib
 scikit-learn
+psycopg2-binary
