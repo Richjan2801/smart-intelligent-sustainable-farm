@@ -1,9 +1,12 @@
 import pg from 'pg';
 import dotenv from 'dotenv';
+import { fileURLToPath } from 'url';
+import path from 'path';
 
-dotenv.config();
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
-// ── PostgreSQL pool ───────────────────────────────────────────────────────────
+// PostgreSQL pool
 
 export const pool = new pg.Pool({
   host: process.env.DB_HOST,
