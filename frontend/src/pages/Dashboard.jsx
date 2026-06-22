@@ -39,6 +39,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
 
   const cacheRef = useRef({});
+  const isFirstLoadRef = useRef(true);
 
   const actualLineColor = "#64748b";
   const temperatureDomain = ["dataMin - 2", "dataMax + 2"];
@@ -102,9 +103,7 @@ export default function Dashboard() {
         return;
       }
 
-      const isInitialLoad = historyData.length === 0;
-
-      if (isInitialLoad) {
+      if (isFirstLoadRef.current) {
         setLoading(true);
       }
 
@@ -120,18 +119,27 @@ export default function Dashboard() {
         cacheRef.current[selectedRange] = transformed;
         setHistoryData(transformed);
       } catch {
-        if (isInitialLoad) {
+        if (isFirstLoadRef.current) {
           setHistoryData([]);
         }
       } finally {
-        setLoading(false);
+        if (isFirstLoadRef.current) {
+          setLoading(false);
+          isFirstLoadRef.current = false;
+        }
       }
     },
-    [historyData.length]
+    []
   );
 
+  // One-time DB health check (does not need to repeat on interval)
   useEffect(() => {
     checkDb();
+  }, [checkDb]);
+
+  // Polling: latest telemetry, device status, and history
+  // All callbacks are stable (empty deps) so this only re-runs when `range` changes.
+  useEffect(() => {
     fetchDeviceStatus();
     fetchLatest();
     fetchHistory(range);
@@ -145,13 +153,7 @@ export default function Dashboard() {
     }, 5000);
 
     return () => clearInterval(interval);
-  }, [
-    range,
-    checkDb,
-    fetchDeviceStatus,
-    fetchLatest,
-    fetchHistory,
-  ]);
+  }, [range, fetchDeviceStatus, fetchLatest, fetchHistory]);
 
   const handleRangeChange = (newRange) => {
     setRange(newRange);
