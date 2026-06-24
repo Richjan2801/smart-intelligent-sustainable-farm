@@ -22,6 +22,16 @@ export const lang = {
     predictionDescription:
       "This section will display AI prediction results after the AI service is integrated.",
 
+    predictionLoading: "Loading prediction...",
+    predictionError: "Prediction unavailable",
+    predictionErrorDetail:
+      "The AI prediction service is currently unavailable. Please try again later.",
+    forecastLabel: "Forecast",
+    horizon1d: "1 Day",
+    horizon3d: "3 Days",
+    horizon7d: "7 Days",
+    horizon30d: "30 Days",
+
     monitoring: "Monitoring",
     display: "Display",
     deviceName: "Device Name",
@@ -76,6 +86,16 @@ export const lang = {
     predictionUnavailable: "Data prediksi belum tersedia",
     predictionDescription:
       "Bagian ini akan menampilkan hasil prediksi AI setelah layanan AI terintegrasi.",
+
+    predictionLoading: "Memuat prediksi...",
+    predictionError: "Prediksi tidak tersedia",
+    predictionErrorDetail:
+      "Layanan prediksi AI sedang tidak tersedia. Silakan coba lagi nanti.",
+    forecastLabel: "Proyeksi",
+    horizon1d: "1 Hari",
+    horizon3d: "3 Hari",
+    horizon7d: "7 Hari",
+    horizon30d: "30 Hari",
 
     monitoring: "Pemantauan",
     display: "Tampilan",

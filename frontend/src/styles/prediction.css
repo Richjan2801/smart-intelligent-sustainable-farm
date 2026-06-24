@@ -1,0 +1,143 @@
+/* ── Prediction Chart Wrapper ────────────────────────────────────────────── */
+
+.prediction-chart-wrapper {
+  margin-top: 8px;
+}
+
+/* ── Horizon Toggle ─────────────────────────────────────────────────────── */
+
+.prediction-horizon-toggle {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.horizon-btn {
+  padding: 6px 18px;
+  border-radius: 999px;
+
+  border: 1px solid #d1d5db;
+  background: white;
+
+  font-size: 13px;
+  font-weight: 600;
+  color: #6b7280;
+
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.horizon-btn:hover:not(:disabled) {
+  background: #f9fafb;
+  border-color: #8b5cf6;
+  color: #8b5cf6;
+}
+
+.horizon-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.horizon-btn-active {
+  background: #8b5cf6;
+  color: white;
+  border-color: #8b5cf6;
+}
+
+.horizon-btn-active:hover:not(:disabled) {
+  background: #7c3aed;
+  color: white;
+}
+
+/* ── Chart Area ─────────────────────────────────────────────────────────── */
+
+.prediction-chart-area {
+  min-height: 300px;
+}
+
+/* ── Loading Skeleton ───────────────────────────────────────────────────── */
+
+.prediction-skeleton {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  gap: 12px;
+  padding: 40px 24px;
+
+  min-height: 280px;
+
+  border: 2px dashed #e5e7eb;
+  border-radius: 18px;
+  background: #f9fafb;
+}
+
+.skeleton-bar {
+  width: 70%;
+  height: 12px;
+  border-radius: 6px;
+  background: linear-gradient(
+    90deg,
+    #e5e7eb 25%,
+    #f3f4f6 50%,
+    #e5e7eb 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s infinite ease-in-out;
+}
+
+.skeleton-bar-short {
+  width: 45%;
+}
+
+.skeleton-bar-mid {
+  width: 58%;
+}
+
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.prediction-loading-text {
+  color: #9ca3af;
+  font-size: 14px;
+  margin-top: 8px;
+}
+
+/* ── Error State ────────────────────────────────────────────────────────── */
+
+.prediction-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  text-align: center;
+  padding: 40px 24px;
+
+  min-height: 280px;
+
+  border: 2px dashed #fecaca;
+  border-radius: 18px;
+  background: #fef2f2;
+}
+
+.prediction-error-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #dc2626;
+  margin-bottom: 8px;
+}
+
+.prediction-error-text {
+  color: #b91c1c;
+  font-size: 14px;
+  max-width: 420px;
+}

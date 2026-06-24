@@ -279,3 +279,9 @@
   60%  { transform: scale(1.15); }
   100% { transform: scale(1); }
 }
+
+.success-text {
+  color: #16a34a;
+  font-size: 14px;
+  font-weight: 600;
+}
