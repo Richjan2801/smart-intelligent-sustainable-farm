@@ -24,34 +24,45 @@ mqttClient.on('connect', () => {
   startWatchdog();
 });
 
-mqttClient.on('message', async (_topic, message) => {
-  try {
-    const payload = JSON.parse(message.toString());
-    const { temperature, humidity, offline_buffered } = payload;
+// Serialise message processing so rapid-fire buffer flushes are inserted in order.
+// Each message waits for the previous INSERT to complete before starting its own.
+let _insertChain = Promise.resolve();
 
-    if (temperature == null || humidity == null) return;
+mqttClient.on('message', (_topic, message) => {
+  _insertChain = _insertChain.then(async () => {
+    try {
+      const payload = JSON.parse(message.toString());
+      const { temperature, humidity, offline_buffered, recorded_at } = payload;
 
-    const devStatus = offline_buffered ? 'offline' : 'online';
+      if (temperature == null || humidity == null) return;
 
-    // Only reset watchdog for LIVE messages — buffered data is historical
-    if (!offline_buffered) {
-      resetWatchdog();
+      const devStatus = offline_buffered ? 'offline' : 'online';
+
+      // Only reset watchdog for LIVE messages — buffered data is historical
+      if (!offline_buffered) {
+        resetWatchdog();
+      }
+
+      // Use the timestamp embedded by the firmware (when sensor was actually read).
+      // Falls back to NOW() if the field is missing (e.g. older firmware).
+      const recordedAt = recorded_at ? new Date(recorded_at * 1000).toISOString() : null;
+
+      await insertSensorData({
+        devId: DEVICE_ID,
+        devStatus,
+        tem: temperature,
+        hum: humidity,
+        recordedAt,
+      });
+
+      console.log(
+        `[DB] Inserted — status: ${devStatus}, temp: ${temperature}, hum: ${humidity}` +
+        (offline_buffered ? ` (buffered, recorded_at: ${recordedAt})` : '')
+      );
+    } catch (err) {
+      console.error('[Error]', err.message);
     }
-
-    await insertSensorData({
-      devId: DEVICE_ID,
-      devStatus,
-      tem: temperature,
-      hum: humidity,
-    });
-
-    console.log(
-      `[DB] Inserted — status: ${devStatus}, temp: ${temperature}, hum: ${humidity}` +
-      (offline_buffered ? ' (buffered)' : '')
-    );
-  } catch (err) {
-    console.error('[Error]', err.message);
-  }
+  });
 });
 
 mqttClient.on('error', (err) => {

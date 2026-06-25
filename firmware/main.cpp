@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include <WiFi.h>
 #include <DHT.h>
+#include <time.h>
 #include "config.h"
 #include "buffer.h"
 #include "mqtt_client.h"
@@ -14,6 +15,7 @@ PumpController pump;
 unsigned long lastReadMs    = 0 - READ_INTERVAL_MS;   // fire immediately on first loop
 unsigned long lastReconnect = 0;
 static bool   _flushing     = false;
+static bool   _ntpSynced    = false;
 
 void connectWiFiBlocking() {
     if (WiFi.status() == WL_CONNECTED) return;
@@ -53,12 +55,33 @@ void flushBuffer() {
     Serial.printf("[Buffer] Flush done. Remaining: %d\n", buffer.count());
 }
 
+void syncNTP() {
+    if (_ntpSynced) return;
+    configTime(25200, 0, "pool.ntp.org", "time.nist.gov");
+    Serial.print("[NTP] Syncing time...");
+    struct tm t;
+    int attempts = 0;
+    while (!getLocalTime(&t) && attempts < 20) {   // max ~10s wait
+        delay(500);
+        Serial.print(".");
+        attempts++;
+    }
+    if (attempts < 20) {
+        _ntpSynced = true;
+        Serial.printf(" OK \u2014 %04d-%02d-%02d %02d:%02d:%02d WIB\n",
+                      t.tm_year + 1900, t.tm_mon + 1, t.tm_mday,
+                      t.tm_hour, t.tm_min, t.tm_sec);
+    } else {
+        Serial.println(" FAILED (will retry on next reconnect)");
+    }
+}
+
 SensorPayload readSensor(bool pumpOn) {
     return {
-        .temperature = dht.readTemperature(),
-        .humidity    = dht.readHumidity(),
-        .pumpOn      = pumpOn,
-        .timestamp   = millis()
+        .temperature  = dht.readTemperature(),
+        .humidity     = dht.readHumidity(),
+        .pumpOn       = pumpOn,
+        .capturedAtMs = millis()
     };
 }
 
@@ -70,7 +93,10 @@ void setup() {
     pump.begin();
     mqtt.begin();
     connectWiFiBlocking();
-    if (WiFi.status() == WL_CONNECTED) mqtt.connect();
+    if (WiFi.status() == WL_CONNECTED) {
+        syncNTP();
+        mqtt.connect();
+    }
 }
 
 void loop() {
@@ -84,6 +110,7 @@ void loop() {
             WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
             Serial.printf("[WiFi] Reconnecting to %s (non-blocking)...\n", WIFI_SSID);
         } else if (!mqtt.isConnected()) {
+            syncNTP();    // ensure NTP is synced before we flush buffered data
             if (mqtt.connect()) flushBuffer();
         }
     }

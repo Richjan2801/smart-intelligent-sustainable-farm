@@ -30,13 +30,18 @@ public:
     bool publish(const SensorPayload& p, bool buffered = false) {
         if (!_client.connected()) return false;
 
+        // Compute the real wall-clock time when data was captured.
+        unsigned long ageMs = millis() - p.capturedAtMs;
+        long long recordedEpoch = (long long)time(nullptr) - (long long)(ageMs / 1000);
+
         JsonDocument doc;
         doc["temperature"]      = p.temperature;
         doc["humidity"]         = p.humidity;
         doc["pump_on"]          = p.pumpOn;
         doc["offline_buffered"] = buffered;
+        doc["recorded_at"]      = recordedEpoch;
 
-        char buf[192];
+        char buf[256];
         size_t len = serializeJson(doc, buf);
 
         bool ok = _client.publish(MQTT_TOPIC, (uint8_t*)buf, len, false);

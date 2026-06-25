@@ -35,16 +35,26 @@ export async function checkDatabaseConnection() {
 
 /**
  * Inserts one row of sensor data into the sensor_data table.
- * @param {{ devId: number, devStatus: string, tem: number|null, hum: number|null }} params
+ * @param {{ devId: number, devStatus: string, tem: number|null, hum: number|null, recordedAt: string|null }} params
  */
-export async function insertSensorData({ devId, devStatus, tem, hum }) {
+export async function insertSensorData({ devId, devStatus, tem, hum, recordedAt = null }) {
   if (!dbReady) {
     throw new Error('Database is not connected');
   }
 
-  await pool.query(
-    `INSERT INTO sensor_data (dev_id, dev_status, tem, hum)
-     VALUES ($1, $2, $3, $4)`,
-    [devId, devStatus, tem, hum]
-  );
+  if (recordedAt) {
+    // Firmware provided the original recording timestamp — honour it
+    await pool.query(
+      `INSERT INTO sensor_data (dev_id, dev_status, tem, hum, recorded_at)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [devId, devStatus, tem, hum, recordedAt]
+    );
+  } else {
+    // Live data — let PostgreSQL default to NOW()
+    await pool.query(
+      `INSERT INTO sensor_data (dev_id, dev_status, tem, hum)
+       VALUES ($1, $2, $3, $4)`,
+      [devId, devStatus, tem, hum]
+    );
+  }
 }
