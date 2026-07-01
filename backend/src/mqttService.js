@@ -24,35 +24,47 @@ mqttClient.on('connect', () => {
   startWatchdog();
 });
 
-mqttClient.on('message', async (_topic, message) => {
+// ── MESSAGE HANDLER ───────────────────────────────────────────────────────────
+
+mqttClient.on('message', async (topic, message) => {
   try {
+    console.log('[MQTT RAW]', topic, message.toString());
+
     const payload = JSON.parse(message.toString());
-    const { temperature, humidity, offline_buffered } = payload;
 
-    if (temperature == null || humidity == null) return;
+    // ── NORMALIZATION LAYER (IMPORTANT) ─────────────────────────────
+    const tem = payload.tem ?? payload.temperature;
+    const hum = payload.hum ?? payload.humidity;
+    const devStatus = payload.dev_status || 'online';
+    const recordedAt = payload.recorded_at || new Date().toISOString();
 
-    const devStatus = offline_buffered ? 'offline' : 'online';
-
-    // Only reset watchdog for LIVE messages — buffered data is historical
-    if (!offline_buffered) {
-      resetWatchdog();
+    // ── VALIDATION ───────────────────────────────────────────────────
+    if (tem == null || hum == null) {
+      console.warn('[MQTT] Invalid payload skipped:', payload);
+      return;
     }
 
+    // reset watchdog only for real-time data
+    resetWatchdog();
+
+    // ── SAVE TO DB ───────────────────────────────────────────────────
     await insertSensorData({
       devId: DEVICE_ID,
       devStatus,
-      tem: temperature,
-      hum: humidity,
+      tem,
+      hum,
     });
 
     console.log(
-      `[DB] Inserted — status: ${devStatus}, temp: ${temperature}, hum: ${humidity}` +
-      (offline_buffered ? ' (buffered)' : '')
+      `[DB] Inserted — status: ${devStatus}, temp: ${tem}, hum: ${hum}`
     );
+
   } catch (err) {
-    console.error('[Error]', err.message);
+    console.error('[MQTT ERROR]', err.message);
   }
 });
+
+// ── ERROR HANDLING ───────────────────────────────────────────────────────────
 
 mqttClient.on('error', (err) => {
   console.error('[MQTT] Error:', err.message);
