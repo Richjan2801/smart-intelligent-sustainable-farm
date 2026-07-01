@@ -19,6 +19,7 @@ import {
   convertTemp,
   resolveLatestValues,
   resolveLabels,
+  injectGapNulls,
 } from "../utils/telemetry";
 
 import "../styles/dashboard.css";
@@ -182,11 +183,14 @@ export default function Dashboard() {
   const latestHum =
     latestHumRaw != null ? latestHumRaw.toFixed(1) : "--";
 
-  const chartData = historyData.map((item) => ({
-    ...item,
-    displayTemp:
-      item.temp != null ? convertTemp(item.temp, config.tempUnit) : null,
-  }));
+  const chartData = injectGapNulls(
+    historyData.map((item) => ({
+      ...item,
+      displayTemp:
+        item.temp != null ? convertTemp(item.temp, config.tempUnit) : null,
+    })),
+    range
+  );
 
   const tempStatus =
     latestTempRaw != null
