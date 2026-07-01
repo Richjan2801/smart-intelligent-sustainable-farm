@@ -58,3 +58,31 @@ export async function insertSensorData({ devId, devStatus, tem, hum, recordedAt 
     );
   }
 }
+/**
+ * Marks the most recent sensor_data row for a device as 'offline'.
+ * Called by the watchdog when no message has been received for too long.
+ * This avoids inserting null-valued sentinel rows — every row always carries
+ * real sensor readings; the status column alone signals the offline transition.
+ *
+ * @param {number} devId
+ */
+export async function markLatestRowOffline(devId) {
+  if (!dbReady) {
+    throw new Error('Database is not connected');
+  }
+
+  const result = await pool.query(
+    `UPDATE sensor_data
+     SET    dev_status = 'offline'
+     WHERE  id = (
+       SELECT id FROM sensor_data
+       WHERE  dev_id = $1
+       ORDER  BY recorded_at DESC
+       LIMIT  1
+     )
+     AND dev_status <> 'offline'`,
+    [devId]
+  );
+
+  return result.rowCount;
+}

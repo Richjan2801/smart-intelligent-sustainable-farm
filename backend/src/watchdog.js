@@ -1,9 +1,9 @@
-import { insertSensorData } from './db.js';
+import { markLatestRowOffline } from './db.js';
 
 export const DEVICE_ID = Number(process.env.DEFAULT_DEVICE_ID);
 const SENSOR_INTERVAL = Number(process.env.SENSOR_INTERVAL_MS);
-// Timeout = sensor interval × 2 + 5 s margin (override with DEVICE_TIMEOUT_MS)
-const DEVICE_TIMEOUT = SENSOR_INTERVAL * 2 + 5000;
+// Timeout = sensor interval + 5 s margin
+const DEVICE_TIMEOUT = SENSOR_INTERVAL + 5000;
 const OFFLINE_THRESHOLD = Number(process.env.OFFLINE_THRESHOLD) || 3;
 
 let lastMessageTime = Date.now();
@@ -16,7 +16,6 @@ let deviceMarkedOffline = false;
  * If no MQTT message arrives within DEVICE_TIMEOUT ms for OFFLINE_THRESHOLD
  * consecutive ticks, an "offline" record is inserted into the database.
  */
-
 export function startWatchdog() {
   if (watchdogInterval) clearInterval(watchdogInterval);
 
@@ -40,14 +39,13 @@ export function startWatchdog() {
 
       if (missCount >= OFFLINE_THRESHOLD && !deviceMarkedOffline) {
         try {
-          await insertSensorData({
-            devId: DEVICE_ID,
-            devStatus: 'offline',
-            tem: null,
-            hum: null,
-          });
+          const updated = await markLatestRowOffline(DEVICE_ID);
           deviceMarkedOffline = true;
-          console.log('[Watchdog] Device offline — inserted to DB');
+          if (updated) {
+            console.log('[Watchdog] Device offline — latest row marked offline in DB');
+          } else {
+            console.log('[Watchdog] Device offline — latest row was already offline');
+          }
         } catch (err) {
           console.error('[Watchdog] DB error:', err.message);
         }
@@ -60,8 +58,8 @@ export function startWatchdog() {
 
 /**
  * Resets the watchdog timer when a fresh MQTT message arrives.
+ * Clears the offline flag so the next outage can be recorded again.
  */
-
 export function resetWatchdog() {
   lastMessageTime = Date.now();
   missCount = 0;
