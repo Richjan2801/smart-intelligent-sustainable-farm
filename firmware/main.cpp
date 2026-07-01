@@ -106,7 +106,7 @@ void loop() {
     if (!_flushing && millis() - lastReconnect >= RECONNECT_DELAY_MS) {
         lastReconnect = millis();
         if (WiFi.status() != WL_CONNECTED) {
-            WiFi.disconnect(true);
+            WiFi.disconnect();
             WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
             Serial.printf("[WiFi] Reconnecting to %s (non-blocking)...\n", WIFI_SSID);
         } else if (!mqtt.isConnected()) {
