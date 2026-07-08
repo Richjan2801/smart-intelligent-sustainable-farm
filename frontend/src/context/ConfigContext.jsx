@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState } from "react";
+import { authFetch } from "../utils/session";
 
 const ConfigContext = createContext();
 
@@ -14,7 +15,7 @@ export function ConfigProvider({ children }) {
   });
 
   useEffect(() => {
-    fetch(`${API_URL}/api/devices`)
+    authFetch(`${API_URL}/api/devices`)
       .then((res) => res.json())
       .then((json) => {
         if (json.status === "ok" && Array.isArray(json.data)) {

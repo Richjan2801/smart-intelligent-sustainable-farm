@@ -11,6 +11,7 @@ import IndicatorLegend from "../components/IndicatorLegend";
 import PredictionChart from "../components/PredictionChart";
 
 import { lang } from "../utils/lang";
+import { authFetch } from "../utils/session";
 import { useConfig } from "../context/ConfigContext";
 import {
   transformHistoryRows,
@@ -62,7 +63,7 @@ export default function Dashboard() {
 
   const checkDb = useCallback(async () => {
     try {
-      const res = await fetch(`${API_URL}/api/db/status`);
+      const res = await authFetch(`${API_URL}/api/db/status`);
       if (!res.ok) throw new Error();
 
       setDbError(false);
@@ -73,7 +74,7 @@ export default function Dashboard() {
 
   const fetchDeviceStatus = useCallback(async () => {
     try {
-      const res = await fetch(`${API_URL}/api/device/status`);
+      const res = await authFetch(`${API_URL}/api/device/status`);
       const json = await res.json();
 
       if (json.status === "ok" && json.data) {
@@ -86,7 +87,7 @@ export default function Dashboard() {
 
   const fetchLatest = useCallback(async () => {
     try {
-      const res = await fetch(`${API_URL}/api/telemetry/latest`);
+      const res = await authFetch(`${API_URL}/api/telemetry/latest`);
       const json = await res.json();
 
       if (json.status === "ok" && json.data) {
@@ -109,7 +110,7 @@ export default function Dashboard() {
       }
 
       try {
-        const res = await fetch(
+        const res = await authFetch(
           `${API_URL}/api/telemetry/history?range=${selectedRange}&limit=500`
         );
 

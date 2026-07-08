@@ -57,9 +57,10 @@ mqttClient.on('message', (_topic, message) => {
         devStatus,
         tem,
         hum,
+        recordedAt,
       });
 
-      console.log(`[DB] Inserted — ${devStatus}, temp: ${tem}, hum: ${hum}`);
+      console.log(`[DB] Inserted — ${devStatus}, temp: ${tem}, hum: ${hum}, at: ${recordedAt}`);
     } catch (err) {
       console.error('[MQTT ERROR]', err.message);
     }

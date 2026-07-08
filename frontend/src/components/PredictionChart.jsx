@@ -12,6 +12,7 @@ import {
 import { useConfig } from "../context/ConfigContext";
 import { lang } from "../utils/lang";
 import { convertTemp } from "../utils/telemetry";
+import { authFetch } from "../utils/session";
 
 import "../styles/prediction.css";
 
@@ -62,7 +63,7 @@ export default function PredictionChart({ type }) {
       setError(false);
 
       try {
-        const res = await fetch(
+        const res = await authFetch(
           `${API_URL}/api/prediction?horizon=${selectedHorizon}`
         );
 

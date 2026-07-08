@@ -93,3 +93,24 @@ export function isSessionValid() {
 export function getAccessToken() {
   return localStorage.getItem("accessToken");
 }
+
+/**
+ * Authenticated fetch — automatically attaches the Bearer token.
+ * Drop-in replacement for fetch() on protected routes.
+ *
+ * @param {string} url
+ * @param {RequestInit} [options]
+ * @returns {Promise<Response>}
+ */
+export function authFetch(url, options = {}) {
+  const token = getAccessToken();
+
+  return fetch(url, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...(options.headers || {}),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+}
