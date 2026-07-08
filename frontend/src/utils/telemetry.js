@@ -4,6 +4,60 @@
  */
 
 /**
+ * Gap thresholds (in milliseconds) per range filter.
+ * If two consecutive data points are separated by more than the threshold,
+ * a synthetic null entry is injected so Recharts breaks the line instead of
+ * drawing a straight segment across the offline period.
+ */
+const GAP_THRESHOLD_MS = {
+  "1h": 5 * 60 * 1000,       // 5 minutes
+  "1d": 5 * 60 * 1000,       // 5 minutes
+  "7d": 2 * 60 * 60 * 1000,  // 2 hours
+  "30d": 12 * 60 * 60 * 1000, // 12 hours
+};
+
+/**
+ * Inserts a null-valued sentinel row between any two consecutive data points
+ * whose timestamps differ by more than the gap threshold for the given range.
+ * The sentinel's `recordedAt` is placed exactly halfway between the two points
+ * so the X-axis label won't cluster at either edge.
+ *
+ * @param {Array<{recordedAt: string, temp: number|null, hum: number|null, displayTemp?: number|null}>} rows
+ * @param {string} range - one of "1h" | "1d" | "7d" | "30d"
+ * @returns {Array}
+ */
+export function injectGapNulls(rows, range) {
+  if (!rows || rows.length === 0) return rows;
+
+  const threshold = GAP_THRESHOLD_MS[range] ?? GAP_THRESHOLD_MS["1h"];
+  const result = [];
+
+  for (let i = 0; i < rows.length; i++) {
+    result.push(rows[i]);
+
+    if (i < rows.length - 1) {
+      const tA = new Date(rows[i].recordedAt).getTime();
+      const tB = new Date(rows[i + 1].recordedAt).getTime();
+
+      if (tB - tA > threshold) {
+        const midTime = new Date(tA + (tB - tA) / 2).toISOString();
+        const nullRow = {
+          ...rows[i],
+          recordedAt: midTime,
+          time: midTime,
+          temp: null,
+          hum: null,
+          displayTemp: null,
+        };
+        result.push(nullRow);
+      }
+    }
+  }
+
+  return result;
+}
+
+/**
  * Maps raw API rows to chart-friendly objects, sorted oldest → newest.
  * @param {Array<{recorded_at: string, tem: number|null, hum: number|null, dev_status: string}>} rows
  * @returns {Array<{time: string, temp: number|null, hum: number|null, recordedAt: string, devStatus: string}>}

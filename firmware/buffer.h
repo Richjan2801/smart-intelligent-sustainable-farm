@@ -6,7 +6,7 @@ struct SensorPayload {
     float         temperature;
     float         humidity;
     bool          pumpOn;
-    unsigned long timestamp;
+    unsigned long capturedAtMs;   // millis() when sensor was read
 };
 
 class CircularBuffer {

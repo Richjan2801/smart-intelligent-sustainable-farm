@@ -2,8 +2,6 @@ import mqtt from 'mqtt';
 import { insertSensorData } from './db.js';
 import { startWatchdog, resetWatchdog, DEVICE_ID } from './watchdog.js';
 
-// ── MQTT client ───────────────────────────────────────────────────────────────
-
 export const mqttClient = mqtt.connect(process.env.MQTT_BROKER, {
   username: process.env.MQTT_USERNAME,
   password: process.env.MQTT_PASSWORD,
@@ -24,47 +22,49 @@ mqttClient.on('connect', () => {
   startWatchdog();
 });
 
-// ── MESSAGE HANDLER ───────────────────────────────────────────────────────────
+let _insertChain = Promise.resolve();
 
-mqttClient.on('message', async (topic, message) => {
-  try {
-    console.log('[MQTT RAW]', topic, message.toString());
+mqttClient.on('message', (_topic, message) => {
+  _insertChain = _insertChain.then(async () => {
+    try {
+      console.log('[MQTT RAW]', message.toString());
 
-    const payload = JSON.parse(message.toString());
+      const payload = JSON.parse(message.toString());
 
-    // ── NORMALIZATION LAYER (IMPORTANT) ─────────────────────────────
-    const tem = payload.tem ?? payload.temperature;
-    const hum = payload.hum ?? payload.humidity;
-    const devStatus = payload.dev_status || 'online';
-    const recordedAt = payload.recorded_at || new Date().toISOString();
+      // ── FLEXIBLE NORMALIZATION  ──
+      const tem = payload.tem ?? payload.temperature ?? payload.temp;
+      const hum = payload.hum ?? payload.humidity;
 
-    // ── VALIDATION ───────────────────────────────────────────────────
-    if (tem == null || hum == null) {
-      console.warn('[MQTT] Invalid payload skipped:', payload);
-      return;
+      const devStatus = payload.dev_status || payload.devStatus || 'online';
+      const offlineBuffered = payload.offline_buffered || false;
+
+      const recordedAt =
+        payload.recorded_at
+          ? new Date(payload.recorded_at * 1000).toISOString()
+          : new Date().toISOString();
+
+      if (tem == null || hum == null) {
+        console.warn('[MQTT] Invalid payload skipped:', payload);
+        return;
+      }
+
+      if (!offlineBuffered) {
+        resetWatchdog();
+      }
+
+      await insertSensorData({
+        devId: DEVICE_ID,
+        devStatus,
+        tem,
+        hum,
+      });
+
+      console.log(`[DB] Inserted — ${devStatus}, temp: ${tem}, hum: ${hum}`);
+    } catch (err) {
+      console.error('[MQTT ERROR]', err.message);
     }
-
-    // reset watchdog only for real-time data
-    resetWatchdog();
-
-    // ── SAVE TO DB ───────────────────────────────────────────────────
-    await insertSensorData({
-      devId: DEVICE_ID,
-      devStatus,
-      tem,
-      hum,
-    });
-
-    console.log(
-      `[DB] Inserted — status: ${devStatus}, temp: ${tem}, hum: ${hum}`
-    );
-
-  } catch (err) {
-    console.error('[MQTT ERROR]', err.message);
-  }
+  });
 });
-
-// ── ERROR HANDLING ───────────────────────────────────────────────────────────
 
 mqttClient.on('error', (err) => {
   console.error('[MQTT] Error:', err.message);
