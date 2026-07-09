@@ -109,7 +109,8 @@ void loop() {
             WiFi.disconnect();
             WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
             Serial.printf("[WiFi] Reconnecting to %s (non-blocking)...\n", WIFI_SSID);
-        } else if (!mqtt.isConnected()) {
+        } else if (WiFi.status() == WL_CONNECTED && !mqtt.isConnected()) {
+            // WiFi is confirmed up before attempting TLS handshake
             syncNTP();    // ensure NTP is synced before we flush buffered data
             if (mqtt.connect()) flushBuffer();
         }

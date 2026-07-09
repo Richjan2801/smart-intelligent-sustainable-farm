@@ -29,6 +29,9 @@ export function startWatchdog() {
   deviceMarkedOffline = false;
 
   watchdogInterval = setInterval(async () => {
+    // Once offline has been recorded, stop counting until a new message arrives
+    if (deviceMarkedOffline) return;
+
     const elapsed = Date.now() - lastMessageTime;
 
     if (elapsed >= DEVICE_TIMEOUT) {
@@ -37,7 +40,7 @@ export function startWatchdog() {
         `[Watchdog] No message for ${Math.round(elapsed / 1000)}s — miss ${missCount}/${OFFLINE_THRESHOLD}`
       );
 
-      if (missCount >= OFFLINE_THRESHOLD && !deviceMarkedOffline) {
+      if (missCount >= OFFLINE_THRESHOLD) {
         try {
           const updated = await markLatestRowOffline(DEVICE_ID);
           deviceMarkedOffline = true;

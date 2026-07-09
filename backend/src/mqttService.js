@@ -35,8 +35,8 @@ mqttClient.on('message', (_topic, message) => {
       const tem = payload.tem ?? payload.temperature ?? payload.temp;
       const hum = payload.hum ?? payload.humidity;
 
-      const devStatus = payload.dev_status || payload.devStatus || 'online';
       const offlineBuffered = payload.offline_buffered || false;
+      const devStatus = payload.dev_status || payload.devStatus || (offlineBuffered ? 'offline' : 'online');
 
       const recordedAt =
         payload.recorded_at
