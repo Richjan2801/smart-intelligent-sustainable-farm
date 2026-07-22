@@ -71,6 +71,7 @@ void syncNTP() {
         Serial.print(".");
         attempts++;
     }
+
     if (attempts < 20) {
         _ntpSynced = true;
         Serial.printf(" OK \u2014 %04d-%02d-%02d %02d:%02d:%02d WIB\n",
@@ -176,8 +177,9 @@ void loop() {
         }
     }
 
-    if (millis() - lastReadMs < READ_INTERVAL_MS) return;
-    lastReadMs = millis();
+    unsigned long now = millis();
+    if (now - lastReadMs < READ_INTERVAL_MS) return;
+    lastReadMs = now;
 
     SensorPayload p;
     bool freshRead = tryReadSensor(p);
