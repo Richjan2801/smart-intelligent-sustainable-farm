@@ -38,9 +38,17 @@ public:
     bool publish(const SensorPayload& p, bool buffered = false) {
         if (!_client.connected()) return false;
 
-        // Compute the real wall-clock time when data was captured.
-        unsigned long ageMs = millis() - p.capturedAtMs;
-        long long recordedEpoch = (long long)time(nullptr) - (long long)(ageMs / 1000);
+        time_t now = time(nullptr);
+        // Guard epoch making sure NTP is synced before publishing
+        if (now < 1700000000L) {
+            Serial.println("[MQTT] Clock not synced — skip publish");
+            return false;
+        }
+
+        // Compute the real wall-clock time when data was captured
+        unsigned long ageMs      = millis() - p.capturedAtMs;
+        long long     ageSeconds = (ageMs + 500UL) / 1000UL;
+        long long     recordedEpoch = (long long)now - ageSeconds;
 
         JsonDocument doc;
         doc["temperature"]      = p.temperature;
