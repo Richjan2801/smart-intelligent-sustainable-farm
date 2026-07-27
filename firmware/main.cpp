@@ -85,6 +85,28 @@ SensorPayload readSensor(bool pumpOn) {
     };
 }
 
+void mqttCallback(char* topic, byte* payload, unsigned int length) {
+    Serial.printf("[MQTT] Message arrived on topic: %s\n", topic);
+    if (strcmp(topic, "sisf/pump/control") == 0) {
+        JsonDocument doc;
+        DeserializationError err = deserializeJson(doc, payload, length);
+        if (err) {
+            Serial.print("[MQTT] JSON parse failed: ");
+            Serial.println(err.c_str());
+            return;
+        }
+        
+        const char* action = doc["action"];
+        if (action) {
+            if (strcmp(action, "on") == 0) {
+                pump.trigger(true);
+            } else if (strcmp(action, "off") == 0) {
+                pump.trigger(false);
+            }
+        }
+    }
+}
+
 void setup() {
     Serial.begin(115200);
     delay(2000);
@@ -95,7 +117,10 @@ void setup() {
     connectWiFiBlocking();
     if (WiFi.status() == WL_CONNECTED) {
         syncNTP();
-        mqtt.connect();
+        mqtt.setCallback(mqttCallback);
+        if (mqtt.connect()) {
+            mqtt.subscribe("sisf/pump/control");
+        }
     }
 }
 
@@ -112,7 +137,10 @@ void loop() {
         } else if (WiFi.status() == WL_CONNECTED && !mqtt.isConnected()) {
             // WiFi is confirmed up before attempting TLS handshake
             syncNTP();    // ensure NTP is synced before we flush buffered data
-            if (mqtt.connect()) flushBuffer();
+            if (mqtt.connect()) {
+                mqtt.subscribe("sisf/pump/control");
+                flushBuffer();
+            }
         }
     }
 

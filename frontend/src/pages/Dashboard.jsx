@@ -3,16 +3,18 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import Sidebar from "../components/Sidebar";
 import Header from "../components/Header";
 import ChartCard from "../components/ChartCard";
-import Chatbot from "../components/Chatbot";
 import SectionTitle from "../components/SectionTitle";
 import RangeFilter from "../components/RangeFilter";
 import StatusBadge from "../components/StatusBadge";
 import IndicatorLegend from "../components/IndicatorLegend";
 import PredictionChart from "../components/PredictionChart";
+import RawLogsTable from "../components/RawLogsTable";
 
 import { lang } from "../utils/lang";
-import { authFetch } from "../utils/session";
+import { authFetch, getUserRole } from "../utils/session";
 import { useConfig } from "../context/ConfigContext";
+import { hasPermission } from "../utils/rbac";
+
 import {
   transformHistoryRows,
   getTemperatureStatus,
@@ -33,6 +35,9 @@ export default function Dashboard() {
   const { config } = useConfig();
   const t = lang[config.language];
 
+  const role = getUserRole(); // 🔥 RBAC
+
+  const [exportLoading, setExportLoading] = useState(false);
   const [dbError, setDbError] = useState(false);
   const [deviceStatus, setDeviceStatus] = useState("offline");
   const [latest, setLatest] = useState(null);
@@ -44,8 +49,6 @@ export default function Dashboard() {
   const isFirstLoadRef = useRef(true);
 
   const actualLineColor = "#64748b";
-  const temperatureDomain = ["dataMin - 2", "dataMax + 2"];
-  const humidityDomain = [0, 100];
 
   const rangeOptions = [
     { value: "1h", label: t.oneHour },
@@ -61,86 +64,104 @@ export default function Dashboard() {
     danger: t.veryHigh || t.danger,
   };
 
-  const checkDb = useCallback(async () => {
-    try {
-      const res = await authFetch(`${API_URL}/api/db/status`);
-      if (!res.ok) throw new Error();
-
-      setDbError(false);
-    } catch {
-      setDbError(true);
-    }
-  }, []);
+  // ─────────────────────────────
+  // API
+  // ─────────────────────────────
 
   const fetchDeviceStatus = useCallback(async () => {
     try {
       const res = await authFetch(`${API_URL}/api/device/status`);
       const json = await res.json();
-
-      if (json.status === "ok" && json.data) {
+      if (json.status === "ok") {
         setDeviceStatus(json.data.dev_status);
       }
-    } catch {
-      // silent
-    }
+    } catch {}
   }, []);
 
   const fetchLatest = useCallback(async () => {
     try {
       const res = await authFetch(`${API_URL}/api/telemetry/latest`);
       const json = await res.json();
-
-      if (json.status === "ok" && json.data) {
+      if (json.status === "ok") {
         setLatest(json.data);
       }
+    } catch {}
+  }, []);
+
+  const fetchHistory = useCallback(async (selectedRange) => {
+    if (cacheRef.current[selectedRange]) {
+      setHistoryData(cacheRef.current[selectedRange]);
+      return;
+    }
+
+    if (isFirstLoadRef.current) setLoading(true);
+
+    try {
+      const res = await authFetch(
+        `${API_URL}/api/telemetry/history?range=${selectedRange}&limit=500`
+      );
+
+      const json = await res.json();
+      const transformed = transformHistoryRows(json.data || []);
+
+      cacheRef.current[selectedRange] = transformed;
+      setHistoryData(transformed);
     } catch {
-      // silent
+      setHistoryData([]);
+    } finally {
+      if (isFirstLoadRef.current) {
+        setLoading(false);
+        isFirstLoadRef.current = false;
+      }
     }
   }, []);
 
-  const fetchHistory = useCallback(
-    async (selectedRange) => {
-      if (cacheRef.current[selectedRange]) {
-        setHistoryData(cacheRef.current[selectedRange]);
+  // ─────────────────────────────
+  // EXPORT CSV
+  // ─────────────────────────────
+
+  const handleExportCSV = useCallback(async () => {
+    setExportLoading(true);
+    try {
+      const res = await authFetch(`${API_URL}/api/telemetry/export`);
+      const json = await res.json();
+
+      if (json.status !== "ok" || !json.data || json.data.length === 0) {
+        alert(t.noDataExport || "No data available to export");
         return;
       }
 
-      if (isFirstLoadRef.current) {
-        setLoading(true);
-      }
+      // Build CSV (menggunakan titik koma agar otomatis terpisah di Excel locale ID)
+      const headers = ["dev_id", "dev_status", "temperature", "humidity", "recorded_at"];
+      const csvRows = [
+        headers.join(";"),
+        ...json.data.map((row) =>
+          [row.dev_id, row.dev_status, row.tem, row.hum, row.recorded_at].join(";")
+        ),
+      ];
+      const csvString = csvRows.join("\n");
 
-      try {
-        const res = await authFetch(
-          `${API_URL}/api/telemetry/history?range=${selectedRange}&limit=500`
-        );
+      // Trigger download
+      const blob = new Blob([csvString], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `sisf-export-${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch {
+      alert(t.exportError || "Export failed. Please try again.");
+    } finally {
+      setExportLoading(false);
+    }
+  }, [t]);
 
-        const json = await res.json();
-        const rows = json.data || [];
-        const transformed = transformHistoryRows(rows);
+  // ─────────────────────────────
+  // EFFECT
+  // ─────────────────────────────
 
-        cacheRef.current[selectedRange] = transformed;
-        setHistoryData(transformed);
-      } catch {
-        if (isFirstLoadRef.current) {
-          setHistoryData([]);
-        }
-      } finally {
-        if (isFirstLoadRef.current) {
-          setLoading(false);
-          isFirstLoadRef.current = false;
-        }
-      }
-    },
-    []
-  );
-
-  // One-time DB health check (does not need to repeat on interval)
-  useEffect(() => {
-    checkDb();
-  }, [checkDb]);
-
-  // Polling: latest telemetry, device status, and history
-  // All callbacks are stable (empty deps) so this only re-runs when `range` changes.
   useEffect(() => {
     fetchDeviceStatus();
     fetchLatest();
@@ -155,11 +176,11 @@ export default function Dashboard() {
     }, 5000);
 
     return () => clearInterval(interval);
-  }, [range, fetchDeviceStatus, fetchLatest, fetchHistory]);
+  }, [range]);
 
-  const handleRangeChange = (newRange) => {
-    setRange(newRange);
-  };
+  // ─────────────────────────────
+  // DATA RESOLVE
+  // ─────────────────────────────
 
   const {
     latestTempRaw,
@@ -188,7 +209,9 @@ export default function Dashboard() {
     historyData.map((item) => ({
       ...item,
       displayTemp:
-        item.temp != null ? convertTemp(item.temp, config.tempUnit) : null,
+        item.temp != null
+          ? convertTemp(item.temp, config.tempUnit)
+          : null,
     })),
     range
   );
@@ -207,8 +230,13 @@ export default function Dashboard() {
       ? getHumidityStatus(latestHumRaw, statusText)
       : null;
 
+  // ─────────────────────────────
+  // UI
+  // ─────────────────────────────
+
   return (
     <div className="flex">
+
       <Sidebar open={sidebarOpen} setOpen={setSidebarOpen} />
 
       <div
@@ -216,67 +244,62 @@ export default function Dashboard() {
           sidebarOpen ? "ml-64" : "ml-20"
         }`}
       >
+
         <Header />
 
         <div className="dashboard-content space-y-12">
+
           {dbError && (
             <div className="db-error-banner">
               {t.databaseError}
             </div>
           )}
 
-          {/* DEVICE */}
+          {/* DEVICE (RBAC) */}
           <div className="dashboard-section">
             <SectionTitle title={t.device} />
 
-            <div className="device-row">
-              <select className="device-select">
-                {config.devices.length === 0 ? (
-                  <option disabled>{t.loadingDevices}</option>
-                ) : (
-                  config.devices.map((d) => (
+            {hasPermission(role, "view_device_status") ? (
+              <div className="device-row">
+                <select className="device-select">
+                  {config.devices.map((d) => (
                     <option key={d.id} value={d.id}>
                       {d.name} ({d.id})
                     </option>
-                  ))
-                )}
-              </select>
+                  ))}
+                </select>
 
-              <div
-                className={`device-status-badge ${
+                <div className={`device-status-badge ${
                   deviceStatus === "online"
                     ? "device-online"
                     : "device-offline"
-                }`}
-              >
-                <span className="device-status-dot"></span>
-                {deviceStatus === "online" ? t.online : t.offline}
+                }`}>
+                  <span className="device-status-dot"></span>
+                  {deviceStatus === "online" ? t.online : t.offline}
+                </div>
               </div>
-            </div>
+            ) : (
+              <p className="text-gray-400">
+                No permission
+              </p>
+            )}
           </div>
 
           {/* TEMPERATURE */}
           <div className="dashboard-section">
             <SectionTitle title={t.temperature} />
 
-            <p className="range-description">
-              {t.rangeDescription}
-            </p>
-
             <RangeFilter
               range={range}
-              onChange={handleRangeChange}
+              onChange={setRange}
               options={rangeOptions}
             />
 
             <IndicatorLegend statusText={statusText} />
 
             <div className="chart-with-value">
-              <div className="chart-card-container">
-                <p className="chart-title">
-                  {t.actualTemp}
-                </p>
 
+              <div className="chart-card-container">
                 {loading ? (
                   <p className="chart-loading">{t.loading}</p>
                 ) : (
@@ -284,7 +307,6 @@ export default function Dashboard() {
                     data={chartData}
                     dataKey="displayTemp"
                     color={actualLineColor}
-                    yDomain={temperatureDomain}
                     range={range}
                     tooltipName={t.temperature}
                     unit={`°${config.tempUnit}`}
@@ -292,44 +314,36 @@ export default function Dashboard() {
                 )}
               </div>
 
-              <div className="value-card value-card-temp">
+              <div className="value-card">
                 <p className="value-card-label">
                   {temperatureLabel}
                 </p>
 
-                <p
-                  className={`temperature-value ${
-                    tempStatus ? tempStatus.className : ""
-                  }`}
-                >
+                <p className="temperature-value">
                   {latestTemp}°{config.tempUnit}
                 </p>
 
                 {tempStatus && <StatusBadge status={tempStatus} />}
               </div>
-            </div>
 
-            <div className="prediction-card">
-              <p className="chart-title">
-                {t.predictedTemp}
-              </p>
-
-              <PredictionChart type="temperature" />
             </div>
           </div>
+
+          {/* PREDICTED TEMPERATURE (RBAC: researcher + admin) */}
+          {hasPermission(role, "export_data") && (
+            <div className="dashboard-section">
+              <SectionTitle title={t.predictedTemp || "Predicted Temperature"} />
+              <PredictionChart type="temperature" />
+            </div>
+          )}
 
           {/* HUMIDITY */}
           <div className="dashboard-section">
             <SectionTitle title={t.humidity} />
 
-            <IndicatorLegend statusText={statusText} />
-
             <div className="chart-with-value">
-              <div className="chart-card-container">
-                <p className="chart-title">
-                  {t.actualHum}
-                </p>
 
+              <div className="chart-card-container">
                 {loading ? (
                   <p className="chart-loading">{t.loading}</p>
                 ) : (
@@ -337,7 +351,6 @@ export default function Dashboard() {
                     data={chartData}
                     dataKey="hum"
                     color={actualLineColor}
-                    yDomain={humidityDomain}
                     range={range}
                     tooltipName={t.humidity}
                     unit="%"
@@ -345,33 +358,62 @@ export default function Dashboard() {
                 )}
               </div>
 
-              <div className="value-card value-card-hum">
+              <div className="value-card">
                 <p className="value-card-label">
                   {humidityLabel}
                 </p>
 
-                <p
-                  className={`humidity-value ${
-                    humStatus ? humStatus.className : ""
-                  }`}
-                >
+                <p className="humidity-value">
                   {latestHum}%
                 </p>
 
                 {humStatus && <StatusBadge status={humStatus} />}
               </div>
-            </div>
 
-            <div className="prediction-card">
-              <p className="chart-title">
-                {t.predictedHum}
-              </p>
-
-              <PredictionChart type="humidity" />
             </div>
           </div>
 
-          <Chatbot />
+          {/* PREDICTED HUMIDITY (RBAC: researcher + admin) */}
+          {hasPermission(role, "export_data") && (
+            <div className="dashboard-section">
+              <SectionTitle title={t.predictedHum || "Predicted Humidity"} />
+              <PredictionChart type="humidity" />
+            </div>
+          )}
+
+          {/* EXPORT DATA (RBAC: researcher + admin) */}
+          {hasPermission(role, "export_data") && (
+            <div className="dashboard-section" id="export-section">
+              <SectionTitle title={t.exportData || "Export Data"} />
+
+              <div className="export-section-card">
+                <p className="export-description">
+                  {config.language === "ID"
+                    ? "Unduh seluruh data sensor dalam format CSV untuk analisis lebih lanjut."
+                    : "Download all sensor data in CSV format for further analysis."}
+                </p>
+
+                <button
+                  className="export-button"
+                  onClick={handleExportCSV}
+                  disabled={exportLoading}
+                >
+                  {exportLoading
+                    ? (t.loading || "Loading...")
+                    : (t.exportCSV || "Export CSV")}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* RAW LOGS (RBAC: researcher + admin) */}
+          {hasPermission(role, "view_raw_logs") && (
+            <div className="dashboard-section" id="raw-logs">
+              <SectionTitle title={t.rawLogs || "Raw Logs"} />
+              <RawLogsTable />
+            </div>
+          )}
+
         </div>
       </div>
     </div>

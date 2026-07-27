@@ -6,6 +6,7 @@ import { pool, dbReady } from './db.js';
 import { DEVICE_ID } from './watchdog.js';
 import { auth } from './middleware/auth.js';
 import { authorize } from './middleware/role.js';
+import { publishMessage } from './mqttService.js';
 
 const router = Router();
 
@@ -43,22 +44,16 @@ router.post('/api/auth/register', async (req, res) => {
       });
     }
 
-    // Reject any attempt to self-register as admin
-    const requestedRole = role || 'farmer';
-    if (!['farmer', 'researcher'].includes(requestedRole)) {
-      return res.status(400).json({
-        status: 'error',
-        message: `Self-registration is only allowed for roles: farmer, researcher`,
-      });
-    }
-
     const passwordHash = await bcrypt.hash(password, 10);
+
+    // Force all new registrations to be 'farmer' to prevent privilege escalation
+    const assignedRole = 'farmer';
 
     const { rows } = await pool.query(
       `INSERT INTO users (username, email, password_hash, role)
        VALUES ($1, $2, $3, $4)
        RETURNING user_id, username, email, role`,
-      [username || null, email, passwordHash, requestedRole]
+      [username || null, email, passwordHash, assignedRole]
     );
 
     res.status(201).json({
@@ -190,6 +185,104 @@ router.get('/api/auth/me', auth, async (req, res) => {
 
 
 // ─────────────────────────────────────────────
+// USERS CRUD (PROTECTED — admin only)
+// ─────────────────────────────────────────────
+
+router.get('/api/users', auth, authorize('manage_users'), async (_req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT user_id, username, email, role, created_at 
+       FROM users ORDER BY created_at DESC`
+    );
+    res.json({ status: 'ok', data: rows });
+  } catch (err) {
+    res.status(500).json({ status: 'error', message: err.message });
+  }
+});
+
+router.put('/api/users/:id/role', auth, authorize('manage_users'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { role } = req.body;
+
+    if (parseInt(id) === req.user.userId) {
+      return res.status(403).json({ status: 'error', message: 'Cannot change your own role' });
+    }
+
+    if (!['farmer', 'researcher', 'admin'].includes(role)) {
+      return res.status(400).json({ status: 'error', message: 'Invalid role' });
+    }
+
+    const { rowCount } = await pool.query(
+      `UPDATE users SET role = $1 WHERE user_id = $2`,
+      [role, id]
+    );
+
+    if (rowCount === 0) return res.status(404).json({ status: 'error', message: 'User not found' });
+    res.json({ status: 'ok', message: 'Role updated successfully' });
+  } catch (err) {
+    res.status(500).json({ status: 'error', message: err.message });
+  }
+});
+
+router.delete('/api/users/:id', auth, authorize('manage_users'), async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (parseInt(id) === req.user.userId) {
+      return res.status(403).json({ status: 'error', message: 'Cannot delete yourself' });
+    }
+
+    const { rowCount } = await pool.query(`DELETE FROM users WHERE user_id = $1`, [id]);
+    
+    if (rowCount === 0) return res.status(404).json({ status: 'error', message: 'User not found' });
+    res.json({ status: 'ok', message: 'User deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ status: 'error', message: err.message });
+  }
+});
+
+
+// ─────────────────────────────────────────────
+// DEVICES CRUD (PROTECTED — admin only)
+// ─────────────────────────────────────────────
+
+router.put('/api/devices/:id', auth, authorize('manage_devices'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name } = req.body;
+
+    if (!name) return res.status(400).json({ status: 'error', message: 'Device name is required' });
+
+    const { rowCount } = await pool.query(
+      `UPDATE devices SET name = $1 WHERE dev_id = $2`,
+      [name, id]
+    );
+
+    if (rowCount === 0) return res.status(404).json({ status: 'error', message: 'Device not found' });
+    res.json({ status: 'ok', message: 'Device updated successfully' });
+  } catch (err) {
+    res.status(500).json({ status: 'error', message: err.message });
+  }
+});
+
+router.delete('/api/devices/:id', auth, authorize('manage_devices'), async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Must delete associated sensor data first to avoid foreign key constraints
+    await pool.query(`DELETE FROM sensor_data WHERE dev_id = $1`, [id]);
+    const { rowCount } = await pool.query(`DELETE FROM devices WHERE dev_id = $1`, [id]);
+    
+    if (rowCount === 0) return res.status(404).json({ status: 'error', message: 'Device not found' });
+    res.json({ status: 'ok', message: 'Device and its sensor data deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ status: 'error', message: err.message });
+  }
+});
+
+
+// ─────────────────────────────────────────────
 // DB STATUS (PROTECTED — admin only)
 // ─────────────────────────────────────────────
 router.get('/api/db/status', auth, authorize('edit_config'), async (_req, res) => {
@@ -205,6 +298,30 @@ router.get('/api/db/status', auth, authorize('edit_config'), async (_req, res) =
       status: 'error',
       database: 'disconnected',
     });
+  }
+});
+
+
+// ─────────────────────────────────────────────
+// PUMP CONTROL (PROTECTED — all roles)
+// ─────────────────────────────────────────────
+router.post('/api/pump/trigger', auth, authorize('trigger_pump'), async (req, res) => {
+  try {
+    const { action } = req.body;
+    
+    if (action !== 'on' && action !== 'off') {
+      return res.status(400).json({ status: 'error', message: 'Invalid action. Must be "on" or "off"' });
+    }
+
+    const success = publishMessage('sisf/pump/control', { action });
+
+    if (success) {
+      res.json({ status: 'ok', message: `Pump trigger '${action}' sent` });
+    } else {
+      res.status(503).json({ status: 'error', message: 'MQTT broker disconnected' });
+    }
+  } catch (err) {
+    res.status(500).json({ status: 'error', message: err.message });
   }
 });
 
@@ -321,7 +438,7 @@ router.get('/api/device/status', auth, authorize('view_device_status'), async (_
 // ─────────────────────────────────────────────
 // DEVICES LIST (PROTECTED — admin only)
 // ─────────────────────────────────────────────
-router.get('/api/devices', auth, authorize('manage_devices'), async (_req, res) => {
+router.get('/api/devices', auth, authorize('view_dashboard'), async (_req, res) => {
   try {
     const { rows } = await pool.query(
       `SELECT dev_id, name FROM devices ORDER BY dev_id ASC`

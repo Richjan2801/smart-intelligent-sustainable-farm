@@ -4,9 +4,14 @@ import Sidebar from "../components/Sidebar";
 import Header from "../components/Header";
 import SectionTitle from "../components/SectionTitle";
 import Toggle from "../components/Toggle";
+import PumpControl from "../components/PumpControl";
+import ManageDevices from "../components/ManageDevices";
+import ManageUsers from "../components/ManageUsers";
 
 import { useConfig } from "../context/ConfigContext";
 import { lang } from "../utils/lang";
+import { getUserRole } from "../utils/session";
+import { hasPermission } from "../utils/rbac";
 
 import "../styles/settings.css";
 
@@ -14,8 +19,10 @@ export default function Settings() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   const { config, setConfig } = useConfig();
-
   const t = lang[config.language];
+  
+  const role = getUserRole();
+  const canEdit = hasPermission(role, "edit_config");
 
   return (
     <div className="flex">
@@ -34,9 +41,17 @@ export default function Settings() {
         <Header />
 
         <div className="settings-content space-y-12">
+          
           {/* DEVICE */}
           <div className="settings-section">
-            <SectionTitle title={t.device} />
+            <div className="flex items-center gap-3 mb-6">
+              <SectionTitle title={t.device} />
+              {!canEdit && (
+                <span className="px-2 py-1 bg-gray-200 text-gray-600 text-xs font-bold rounded">
+                  {t.adminOnly || "Admin Only"}
+                </span>
+              )}
+            </div>
 
             <div className="settings-card space-y-4">
               {config.devices.length === 0 ? (
@@ -57,6 +72,7 @@ export default function Settings() {
 
                       <input
                         value={device.name}
+                        disabled={!canEdit}
                         onChange={(e) => {
                           const newDevices = [
                             ...config.devices,
@@ -70,7 +86,7 @@ export default function Settings() {
                             devices: newDevices,
                           }));
                         }}
-                        className="settings-input"
+                        className={`settings-input ${!canEdit ? "settings-input-disabled" : ""}`}
                       />
                     </div>
 
@@ -94,7 +110,9 @@ export default function Settings() {
 
           {/* DISPLAY */}
           <div className="settings-section">
-            <SectionTitle title={t.display} />
+            <div className="flex items-center gap-3 mb-6">
+              <SectionTitle title={t.display} />
+            </div>
 
             <div className="settings-card space-y-6">
               {/* TEMP UNIT */}
@@ -103,17 +121,19 @@ export default function Settings() {
                   {t.tempUnit}
                 </span>
 
-                <Toggle
-                  left="C"
-                  right="F"
-                  value={config.tempUnit}
-                  setValue={(val) =>
-                    setConfig((prev) => ({
-                      ...prev,
-                      tempUnit: val,
-                    }))
-                  }
-                />
+                <div>
+                  <Toggle
+                    left="C"
+                    right="F"
+                    value={config.tempUnit}
+                    setValue={(val) =>
+                      setConfig((prev) => ({
+                        ...prev,
+                        tempUnit: val,
+                      }))
+                    }
+                  />
+                </div>
               </div>
 
               {/* LANGUAGE */}
@@ -122,20 +142,47 @@ export default function Settings() {
                   {t.language}
                 </span>
 
-                <Toggle
-                  left="ID"
-                  right="EN"
-                  value={config.language}
-                  setValue={(val) =>
-                    setConfig((prev) => ({
-                      ...prev,
-                      language: val,
-                    }))
-                  }
-                />
+                <div>
+                  <Toggle
+                    left="ID"
+                    right="EN"
+                    value={config.language}
+                    setValue={(val) =>
+                      setConfig((prev) => ({
+                        ...prev,
+                        language: val,
+                      }))
+                    }
+                  />
+                </div>
               </div>
             </div>
           </div>
+
+          {/* PUMP CONTROL */}
+          {hasPermission(role, "trigger_pump") && (
+            <div className="settings-section">
+              <SectionTitle title={t.pumpControl || "Pump Control"} />
+              <PumpControl />
+            </div>
+          )}
+
+          {/* MANAGE DEVICES (admin only) */}
+          {hasPermission(role, "manage_devices") && (
+            <div className="settings-section">
+              <SectionTitle title={t.manageDevices || "Manage Devices"} />
+              <ManageDevices />
+            </div>
+          )}
+
+          {/* MANAGE USERS (admin only) */}
+          {hasPermission(role, "manage_users") && (
+            <div className="settings-section">
+              <SectionTitle title={t.manageUsers || "Manage Users"} />
+              <ManageUsers />
+            </div>
+          )}
+
         </div>
       </div>
     </div>

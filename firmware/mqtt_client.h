@@ -18,6 +18,14 @@ public:
 
     bool isConnected() { return _client.connected(); }
     void loop()        { _client.loop(); }
+    void setCallback(MQTT_CALLBACK_SIGNATURE) { _client.setCallback(callback); }
+
+    bool subscribe(const char* topic) {
+        if (!_client.connected()) return false;
+        bool ok = _client.subscribe(topic, 1);
+        Serial.printf("[MQTT] Subscribe to %s: %s\n", topic, ok ? "OK" : "FAILED");
+        return ok;
+    }
 
     bool connect() {
         if (_client.connected()) return true;

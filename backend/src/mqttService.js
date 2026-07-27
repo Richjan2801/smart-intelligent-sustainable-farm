@@ -8,6 +8,16 @@ export const mqttClient = mqtt.connect(process.env.MQTT_BROKER, {
   rejectUnauthorized: true,
 });
 
+export function publishMessage(topic, payload) {
+  if (mqttClient.connected) {
+    mqttClient.publish(topic, JSON.stringify(payload));
+    console.log(`[MQTT] Published to ${topic}:`, payload);
+    return true;
+  }
+  console.error('[MQTT] Failed to publish, client not connected');
+  return false;
+}
+
 mqttClient.on('connect', () => {
   console.log('[MQTT] Connected');
 

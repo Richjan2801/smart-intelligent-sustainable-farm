@@ -1,0 +1,83 @@
+.pump-control-container {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  border: 1px solid #f3f4f6;
+  padding: 24px;
+}
+
+.pump-control-content {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.pump-icon-wrapper {
+  background: #eff6ff;
+  color: #3b82f6;
+  padding: 16px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pump-control-info {
+  flex: 1;
+}
+
+.pump-control-desc {
+  color: #4b5563;
+  font-size: 14px;
+  margin: 0;
+}
+
+.pump-control-buttons {
+  display: flex;
+  gap: 12px;
+}
+
+.pump-btn {
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 14px;
+  border: none;
+  cursor: pointer;
+  transition: 0.2s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pump-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.pump-btn-on {
+  background-color: #10b981;
+  color: white;
+  box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.2);
+}
+
+.pump-btn-on:hover:not(:disabled) {
+  background-color: #059669;
+}
+
+.pump-btn-off {
+  background-color: #ef4444;
+  color: white;
+  box-shadow: 0 4px 6px -1px rgba(239, 68, 68, 0.2);
+}
+
+.pump-btn-off:hover:not(:disabled) {
+  background-color: #dc2626;
+}
+
+@media (max-width: 640px) {
+  .pump-control-content {
+    flex-direction: column;
+    text-align: center;
+  }
+}

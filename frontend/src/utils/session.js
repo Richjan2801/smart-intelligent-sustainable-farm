@@ -1,40 +1,18 @@
 /**
- * Session utilities — JWT based session helpers.
- * Used by: App.jsx, Header.jsx, Login.jsx
+ * Session utilities — JWT based session helpers
  */
 
 export function clearSession() {
-  localStorage.removeItem("isLogin");
-  localStorage.removeItem("username");
-  localStorage.removeItem("accessToken");
-  localStorage.removeItem("tokenExpiredAt");
-  localStorage.removeItem("mock_api");
-
-  localStorage.removeItem("user");
-  localStorage.removeItem("userEmail");
-  localStorage.removeItem("userName");
-  localStorage.removeItem("userRole");
-
-  localStorage.removeItem("access_token");
-  localStorage.removeItem("authToken");
-  localStorage.removeItem("refresh_token");
+  localStorage.clear();
 }
 
 function decodeJwtPayload(token) {
   try {
     const payload = token.split(".")[1];
+    if (!payload) return null;
 
-    if (!payload) {
-      return null;
-    }
-
-    const normalizedPayload = payload
-      .replace(/-/g, "+")
-      .replace(/_/g, "/");
-
-    const decodedPayload = atob(normalizedPayload);
-
-    return JSON.parse(decodedPayload);
+    const normalized = payload.replace(/-/g, "+").replace(/_/g, "/");
+    return JSON.parse(atob(normalized));
   } catch {
     return null;
   }
@@ -42,47 +20,35 @@ function decodeJwtPayload(token) {
 
 export function getTokenExpiredAt(token) {
   const payload = decodeJwtPayload(token);
-
-  if (!payload || !payload.exp) {
-    return null;
-  }
-
+  if (!payload?.exp) return null;
   return payload.exp * 1000;
 }
 
 export function saveSession({ accessToken, user, tokenExpiredAt }) {
-  const resolvedTokenExpiredAt =
-    tokenExpiredAt || getTokenExpiredAt(accessToken);
+  const exp = tokenExpiredAt || getTokenExpiredAt(accessToken);
 
-  if (!accessToken || !user || !resolvedTokenExpiredAt) {
+  if (!accessToken || !user || !exp) {
     clearSession();
     return false;
   }
 
   localStorage.setItem("isLogin", "true");
   localStorage.setItem("accessToken", accessToken);
-  localStorage.setItem("tokenExpiredAt", String(resolvedTokenExpiredAt));
+  localStorage.setItem("tokenExpiredAt", String(exp));
 
-  localStorage.setItem("username", user.username || "User");
   localStorage.setItem("user", JSON.stringify(user));
-  localStorage.setItem("userEmail", user.email || "");
-  localStorage.setItem("userName", user.username || "");
-  localStorage.setItem("userRole", user.role || "admin");
+  localStorage.setItem("userRole", user.role || "farmer");
 
   return true;
 }
 
 export function isSessionValid() {
-  const isLogin = localStorage.getItem("isLogin") === "true";
-  const accessToken = localStorage.getItem("accessToken");
-  const tokenExpiredAt = Number(localStorage.getItem("tokenExpiredAt"));
+  const token = localStorage.getItem("accessToken");
+  const exp = Number(localStorage.getItem("tokenExpiredAt"));
 
-  if (!isLogin || !accessToken || !tokenExpiredAt) {
-    clearSession();
-    return false;
-  }
+  if (!token || !exp) return false;
 
-  if (Date.now() >= tokenExpiredAt) {
+  if (Date.now() >= exp) {
     clearSession();
     return false;
   }
@@ -94,14 +60,15 @@ export function getAccessToken() {
   return localStorage.getItem("accessToken");
 }
 
-/**
- * Authenticated fetch — automatically attaches the Bearer token.
- * Drop-in replacement for fetch() on protected routes.
- *
- * @param {string} url
- * @param {RequestInit} [options]
- * @returns {Promise<Response>}
- */
+export function getUserRole() {
+  try {
+    const user = JSON.parse(localStorage.getItem("user"));
+    return user?.role || "farmer";
+  } catch {
+    return "farmer";
+  }
+}
+
 export function authFetch(url, options = {}) {
   const token = getAccessToken();
 

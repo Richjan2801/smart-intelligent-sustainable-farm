@@ -1,0 +1,112 @@
+.manage-users-container {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+  border: 1px solid #f3f4f6;
+}
+
+.table-wrapper {
+  overflow-x: auto;
+}
+
+.users-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 14px;
+}
+
+.users-table th {
+  background-color: #f9fafb;
+  padding: 12px 16px;
+  font-weight: 600;
+  color: #4b5563;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.users-table td {
+  padding: 12px 16px;
+  border-bottom: 1px solid #e5e7eb;
+  color: #1f2937;
+  vertical-align: middle;
+}
+
+.users-table tr:last-child td {
+  border-bottom: none;
+}
+
+.users-table tbody tr:hover {
+  background-color: #f9fafb;
+}
+
+.row-self td {
+  background-color: #eff6ff;
+}
+.row-self:hover td {
+  background-color: #dbeafe !important;
+}
+
+.role-select {
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
+  background-color: white;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  outline: none;
+  transition: 0.2s;
+}
+
+.role-select:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background-color: #f3f4f6;
+}
+
+.role-select:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+.role-admin { color: #b91c1c; }
+.role-researcher { color: #047857; }
+.role-farmer { color: #1d4ed8; }
+
+.delete-btn {
+  color: #ef4444;
+  padding: 6px;
+  border-radius: 6px;
+  transition: 0.2s;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.delete-btn:hover:not(:disabled) {
+  background-color: #fee2e2;
+  color: #b91c1c;
+}
+
+.delete-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.manage-users-loading,
+.manage-users-error {
+  padding: 24px;
+  text-align: center;
+  color: #6b7280;
+  background: white;
+  border-radius: 16px;
+  border: 1px solid #f3f4f6;
+}
+
+.manage-users-error {
+  color: #ef4444;
+}

@@ -3,31 +3,24 @@ import jwt from "jsonwebtoken";
 /**
  * JWT Authentication Middleware
  * - Verify token
- * - Attach decoded user to req.user
+ * - Attach decoded payload to req.user
  */
 export function auth(req, res, next) {
+  const header = req.headers.authorization;
+
+  if (!header?.startsWith("Bearer ")) {
+    return res.status(401).json({
+      status: "error",
+      message: "Authorization token missing",
+    });
+  }
+
+  const token = header.split(" ")[1];
+
   try {
-    const header = req.headers.authorization;
-
-    if (!header) {
-      return res.status(401).json({
-        status: "error",
-        message: "Authorization header missing",
-      });
-    }
-
-    const token = header.split(" ")[1];
-
-    if (!token) {
-      return res.status(401).json({
-        status: "error",
-        message: "Token missing",
-      });
-    }
-
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    // attach user payload ke request
+    // attach user payload
     req.user = decoded;
 
     next();

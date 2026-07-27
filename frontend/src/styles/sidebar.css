@@ -7,7 +7,9 @@
   padding: 10px 14px;
   border-radius: 12px;
   box-shadow: 0 10px 20px rgba(37, 99, 235, 0.3);
-  transition: 0.3s;
+  transition: left 0.3s;
+  border: none;
+  cursor: pointer;
 }
 
 .sidebar-toggle:hover {
@@ -19,12 +21,22 @@
   top: 0;
   left: 0;
   height: 100%;
-  padding: 20px;
   background: white;
   color: #1e3a8a;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-  transition: 0.3s;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  transition: width 0.3s;
   z-index: 40;
+  overflow: hidden;
+}
+
+.sidebar-container.open {
+  width: 260px;
+  padding: 20px;
+}
+
+.sidebar-container.closed {
+  width: 80px;
+  padding: 20px 10px;
 }
 
 .sidebar-logo {
@@ -40,7 +52,7 @@
 .sidebar-menu {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
 }
 
 .sidebar-item {
@@ -48,9 +60,12 @@
   align-items: center;
   gap: 12px;
   padding: 12px;
-  border-radius: 16px;
+  border-radius: 12px;
   cursor: pointer;
   transition: 0.2s;
+  white-space: nowrap;
+  font-size: 14px;
+  font-weight: 500;
 }
 
 .sidebar-item:hover {
@@ -60,6 +75,7 @@
 .sidebar-item.active {
   background: #dbeafe;
   color: #1d4ed8;
+  font-weight: 600;
 }
 
 .sidebar-footer {

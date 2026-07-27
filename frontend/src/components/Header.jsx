@@ -7,7 +7,7 @@ import {
 
 import { useConfig } from "../context/ConfigContext";
 import { lang } from "../utils/lang";
-import { clearSession } from "../utils/session";
+import { clearSession, getUserRole } from "../utils/session";
 
 import "../styles/header.css";
 
@@ -18,8 +18,10 @@ export default function Header() {
 
   const t = lang[config.language];
 
-  const username =
-    localStorage.getItem("username") || "User";
+  const stored = JSON.parse(localStorage.getItem("user") || "{}");
+  const username = stored.username || "User";
+  const role = getUserRole();
+  const roleLabel = role.charAt(0).toUpperCase() + role.slice(1);
 
   const handleLogout = () => {
     clearSession();
@@ -55,7 +57,7 @@ export default function Header() {
             </p>
 
             <p className="profile-role">
-              Admin
+              {roleLabel}
             </p>
           </div>
 
