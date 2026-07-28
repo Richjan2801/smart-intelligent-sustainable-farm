@@ -41,6 +41,8 @@ export default function Dashboard() {
   const [dbError, setDbError] = useState(false);
   const [deviceStatus, setDeviceStatus] = useState("offline");
   const [latest, setLatest] = useState(null);
+  const [exportFrom, setExportFrom] = useState("");
+  const [exportTo, setExportTo] = useState("");
   const [historyData, setHistoryData] = useState([]);
   const [range, setRange] = useState("1h");
   const [loading, setLoading] = useState(true);
@@ -123,7 +125,14 @@ export default function Dashboard() {
   const handleExportCSV = useCallback(async () => {
     setExportLoading(true);
     try {
-      const res = await authFetch(`${API_URL}/api/telemetry/export`);
+      let fetchUrl = `${API_URL}/api/telemetry/export`;
+      const params = new URLSearchParams();
+      if (exportFrom) params.append("from", exportFrom);
+      if (exportTo) params.append("to", exportTo);
+      const qs = params.toString();
+      if (qs) fetchUrl += `?${qs}`;
+
+      const res = await authFetch(fetchUrl);
       const json = await res.json();
 
       if (json.status !== "ok" || !json.data || json.data.length === 0) {
@@ -156,7 +165,7 @@ export default function Dashboard() {
     } finally {
       setExportLoading(false);
     }
-  }, [t]);
+  }, [t, exportFrom, exportTo]);
 
   // ─────────────────────────────
   // EFFECT
@@ -389,9 +398,30 @@ export default function Dashboard() {
               <div className="export-section-card">
                 <p className="export-description">
                   {config.language === "ID"
-                    ? "Unduh seluruh data sensor dalam format CSV untuk analisis lebih lanjut."
-                    : "Download all sensor data in CSV format for further analysis."}
+                    ? "Unduh data sensor dalam format CSV. Kosongkan tanggal untuk mengunduh semua data."
+                    : "Download sensor data in CSV format. Leave dates empty to download all data."}
                 </p>
+
+                <div className="flex gap-4 mb-4">
+                  <div>
+                    <label className="block text-sm text-gray-600 mb-1">From</label>
+                    <input 
+                      type="date" 
+                      className="border border-gray-300 rounded px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                      value={exportFrom} 
+                      onChange={e => setExportFrom(e.target.value)} 
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-600 mb-1">To</label>
+                    <input 
+                      type="date" 
+                      className="border border-gray-300 rounded px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                      value={exportTo} 
+                      onChange={e => setExportTo(e.target.value)} 
+                    />
+                  </div>
+                </div>
 
                 <button
                   className="export-button"
