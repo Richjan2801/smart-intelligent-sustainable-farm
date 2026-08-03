@@ -20,6 +20,12 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.pump-icon-active {
+  background: #d1fae5;
+  color: #059669;
 }
 
 .pump-control-info {
@@ -29,7 +35,21 @@
 .pump-control-desc {
   color: #4b5563;
   font-size: 14px;
+  margin: 0 0 6px;
+}
+
+.pump-status-label {
+  font-size: 13px;
+  font-weight: 600;
   margin: 0;
+}
+
+.pump-status-on {
+  color: #059669;
+}
+
+.pump-status-off {
+  color: #6b7280;
 }
 
 .pump-control-buttons {

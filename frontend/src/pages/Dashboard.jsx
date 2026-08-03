@@ -9,6 +9,7 @@ import StatusBadge from "../components/StatusBadge";
 import IndicatorLegend from "../components/IndicatorLegend";
 import PredictionChart from "../components/PredictionChart";
 import RawLogsTable from "../components/RawLogsTable";
+import PumpControl from "../components/PumpControl";
 
 import { lang } from "../utils/lang";
 import { authFetch, getUserRole } from "../utils/session";
@@ -256,7 +257,7 @@ export default function Dashboard() {
             </div>
           )}
 
-          {/* DEVICE (RBAC) */}
+          {/* DEVICE + PUMP CONTROL */}
           <div className="dashboard-section">
             <SectionTitle title={t.device} />
 
@@ -283,6 +284,16 @@ export default function Dashboard() {
               <p className="text-gray-400">
                 No permission
               </p>
+            )}
+
+            {hasPermission(role, "trigger_pump") && (
+              <div className="mt-6">
+                <PumpControl
+                  pumpOn={latest?.pump_on ?? false}
+                  deviceOnline={deviceStatus === "online"}
+                  onTriggered={fetchLatest}
+                />
+              </div>
             )}
           </div>
 

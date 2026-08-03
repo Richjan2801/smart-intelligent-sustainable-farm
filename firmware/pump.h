@@ -15,8 +15,14 @@ public:
     void update() {
         if (!_pumpOn) return;
 
-        if (millis() - _pumpStartMs >= PUMP_ON_DURATION) {
-            off("duration elapsed");
+        if (_manualOverride) {
+            if (millis() - _pumpStartMs >= PUMP_MANUAL_TIMEOUT) {
+                off("manual timeout (30s)");
+            }
+        } else {
+            if (millis() - _pumpStartMs >= PUMP_ON_DURATION) {
+                off("duration elapsed");
+            }
         }
     }
 
@@ -35,10 +41,10 @@ public:
     void trigger(bool state) {
         if (state) {
             _manualOverride = true;
-            on(0, 0); // Triggered manually
+            on(0, 0); // Triggered manually — timer 30 detik dimulai
         } else {
-            _manualOverride = false;
-            off("manual override off");
+            // User matikan manual sebelum timeout — langsung off
+            off("manual off by user");
         }
     }
 
@@ -55,7 +61,7 @@ private:
         _pumpStartMs = millis();
         digitalWrite(PUMP_PIN, HIGH);
         if (_manualOverride) {
-            Serial.println("[Pump] ON — Manual Trigger");
+            Serial.printf("[Pump] ON — Manual Trigger (GPIO %d = HIGH)\n", PUMP_PIN);
         } else {
             Serial.printf("[Pump] ON — Temp: %.1f°C (thr: %.1f), Hum: %.1f%% (thr: %.1f)\n",
                           temp, (float)TEMP_THRESHOLD, hum, (float)HUM_THRESHOLD);
@@ -63,11 +69,11 @@ private:
     }
 
     void off(const char* reason) {
-        _pumpOn    = false;
-        _lastOffMs = millis();
-        _manualOverride = false; // Reset manual override on any off event
+        _pumpOn         = false;
+        _lastOffMs      = millis();
+        _manualOverride = false;
         digitalWrite(PUMP_PIN, LOW);
-        Serial.printf("[Pump] OFF — %s\n", reason);
+        Serial.printf("[Pump] OFF — %s (GPIO %d = LOW)\n", reason, PUMP_PIN);
     }
 
     bool cooldownElapsed() const {

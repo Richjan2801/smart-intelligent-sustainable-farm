@@ -4,7 +4,6 @@ import Sidebar from "../components/Sidebar";
 import Header from "../components/Header";
 import SectionTitle from "../components/SectionTitle";
 import Toggle from "../components/Toggle";
-import PumpControl from "../components/PumpControl";
 import ManageDevices from "../components/ManageDevices";
 import ManageUsers from "../components/ManageUsers";
 
@@ -158,14 +157,6 @@ export default function Settings() {
               </div>
             </div>
           </div>
-
-          {/* PUMP CONTROL */}
-          {hasPermission(role, "trigger_pump") && (
-            <div className="settings-section">
-              <SectionTitle title={t.pumpControl || "Pump Control"} />
-              <PumpControl />
-            </div>
-          )}
 
           {/* MANAGE DEVICES (admin only) */}
           {hasPermission(role, "manage_devices") && (

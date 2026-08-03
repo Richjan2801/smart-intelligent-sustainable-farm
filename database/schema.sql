@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS sensor_data (
     dev_status  VARCHAR(10) NOT NULL CHECK (dev_status IN ('online', 'offline')),
     tem         NUMERIC(5,2),
     hum         NUMERIC(5,2),
+    pump_on     BOOLEAN     NOT NULL DEFAULT false,
     recorded_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 

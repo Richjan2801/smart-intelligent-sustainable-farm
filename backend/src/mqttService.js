@@ -8,10 +8,10 @@ export const mqttClient = mqtt.connect(process.env.MQTT_BROKER, {
   rejectUnauthorized: true,
 });
 
-export function publishMessage(topic, payload) {
+export function publishMessage(topic, payload, { qos = 0 } = {}) {
   if (mqttClient.connected) {
-    mqttClient.publish(topic, JSON.stringify(payload));
-    console.log(`[MQTT] Published to ${topic}:`, payload);
+    mqttClient.publish(topic, JSON.stringify(payload), { qos });
+    console.log(`[MQTT] Published to ${topic} (QoS ${qos}):`, payload);
     return true;
   }
   console.error('[MQTT] Failed to publish, client not connected');
@@ -44,6 +44,7 @@ mqttClient.on('message', (_topic, message) => {
       // ── FLEXIBLE NORMALIZATION  ──
       const tem = payload.tem ?? payload.temperature ?? payload.temp;
       const hum = payload.hum ?? payload.humidity;
+      const pumpOn = payload.pump_on ?? payload.pumpOn ?? false;
 
       const offlineBuffered = payload.offline_buffered || false;
       const devStatus = payload.dev_status || payload.devStatus || (offlineBuffered ? 'offline' : 'online');
@@ -67,10 +68,11 @@ mqttClient.on('message', (_topic, message) => {
         devStatus,
         tem,
         hum,
+        pumpOn,
         recordedAt,
       });
 
-      console.log(`[DB] Inserted — ${devStatus}, temp: ${tem}, hum: ${hum}, at: ${recordedAt}`);
+      console.log(`[DB] Inserted — ${devStatus}, temp: ${tem}, hum: ${hum}, pump: ${pumpOn}, at: ${recordedAt}`);
     } catch (err) {
       console.error('[MQTT ERROR]', err.message);
     }

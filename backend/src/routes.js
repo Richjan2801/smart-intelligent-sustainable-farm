@@ -313,7 +313,7 @@ router.post('/api/pump/trigger', auth, authorize('trigger_pump'), async (req, re
       return res.status(400).json({ status: 'error', message: 'Invalid action. Must be "on" or "off"' });
     }
 
-    const success = publishMessage('sisf/pump/control', { action });
+    const success = publishMessage('sisf/pump/control', { action }, { qos: 1 });
 
     if (success) {
       res.json({ status: 'ok', message: `Pump trigger '${action}' sent` });
@@ -332,7 +332,7 @@ router.post('/api/pump/trigger', auth, authorize('trigger_pump'), async (req, re
 router.get('/api/telemetry/latest', auth, authorize('view_dashboard'), async (_req, res) => {
   try {
     const { rows } = await pool.query(
-      `SELECT dev_id, dev_status, tem, hum, recorded_at
+      `SELECT dev_id, dev_status, tem, hum, pump_on, recorded_at
        FROM sensor_data
        ORDER BY recorded_at DESC
        LIMIT 1`
@@ -363,7 +363,7 @@ router.get('/api/telemetry/history', auth, authorize('view_dashboard'), async (r
     const limit = Math.min(parseInt(req.query.limit) || 500, 1000);
 
     const { rows } = await pool.query(
-      `SELECT dev_id, dev_status, tem, hum, recorded_at
+      `SELECT dev_id, dev_status, tem, hum, pump_on, recorded_at
        FROM sensor_data
        WHERE dev_id = $1
          AND recorded_at >= NOW() - $2::interval
@@ -390,7 +390,7 @@ router.get('/api/telemetry/raw', auth, authorize('view_raw_logs'), async (req, r
   try {
     const limit = Math.min(parseInt(req.query.limit) || 100, 1000);
     const { rows } = await pool.query(
-      `SELECT dev_id, dev_status, tem, hum, recorded_at
+      `SELECT dev_id, dev_status, tem, hum, pump_on, recorded_at
        FROM sensor_data
        WHERE dev_id = $1
        ORDER BY recorded_at DESC
@@ -485,7 +485,7 @@ router.get('/api/telemetry/export', auth, authorize('export_data'), async (req, 
     const { from, to } = req.query;
 
     const { rows } = await pool.query(
-      `SELECT dev_id, dev_status, tem, hum, recorded_at
+      `SELECT dev_id, dev_status, tem, hum, pump_on, recorded_at
        FROM sensor_data
        WHERE dev_id = $1
          AND ($2::timestamptz IS NULL OR recorded_at >= $2::timestamptz)

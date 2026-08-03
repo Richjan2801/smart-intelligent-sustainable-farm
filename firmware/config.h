@@ -4,19 +4,24 @@
 #define DHT_PIN  4
 #define DHT_TYPE DHT11
 
+// MQTT topics
+#define MQTT_PUMP_TOPIC   "sisf/pump/control"
+
 // Pump (IRLZ44N MOSFET Gate)
 #define PUMP_PIN          18
 #define TEMP_THRESHOLD    30.0f   // °C
 #define HUM_THRESHOLD     40.0f   // % 
 #define PUMP_ON_DURATION  10000   // ms
-#define PUMP_COOLDOWN     30000
+#define PUMP_COOLDOWN           30000
+#define PUMP_MANUAL_TIMEOUT     30000   // ms — auto-off jika manual trigger aktif > 30 detik
 
 // Buffer
 #define MAX_BUFFER_SIZE 50
 
 // Timing
-#define READ_INTERVAL_MS   10000
-#define RECONNECT_DELAY_MS 5000
+#define READ_INTERVAL_MS      10000
+#define RECONNECT_DELAY_MS    5000
+#define DHT_MIN_INTERVAL_MS   2100   // DHT11 minimum gap between reads
 
 // TLS
 const char MQTT_CA_CERT[] PROGMEM = R"EOF(
