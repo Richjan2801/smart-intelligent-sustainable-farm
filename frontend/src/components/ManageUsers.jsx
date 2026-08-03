@@ -71,13 +71,18 @@ export default function ManageUsers() {
   if (loading) return <div className="manage-users-loading">{t.loading}</div>;
   if (error) return <div className="manage-users-error">{error}</div>;
 
+  const sortedUsers = [...users].sort((a, b) => {
+    if (a.user_id === currentUser.userId) return -1;
+    if (b.user_id === currentUser.userId) return 1;
+    return 0;
+  });
+
   return (
     <div className="manage-users-container">
       <div className="table-wrapper">
         <table className="users-table">
           <thead>
             <tr>
-              <th>ID</th>
               <th>Username</th>
               <th>Email</th>
               <th>{t.role || "Role"}</th>
@@ -86,11 +91,10 @@ export default function ManageUsers() {
             </tr>
           </thead>
           <tbody>
-            {users.map((u) => {
+            {sortedUsers.map((u) => {
               const isSelf = u.user_id === currentUser.userId;
               return (
                 <tr key={u.user_id} className={isSelf ? "row-self" : ""}>
-                  <td>{u.user_id}</td>
                   <td className="font-medium">{u.username} {isSelf && "(You)"}</td>
                   <td>{u.email}</td>
                   <td>
@@ -121,7 +125,7 @@ export default function ManageUsers() {
             })}
             {users.length === 0 && (
               <tr>
-                <td colSpan="6" className="text-center py-4 text-gray-500">
+                <td colSpan="5" className="text-center py-4 text-gray-500">
                   No users found
                 </td>
               </tr>
