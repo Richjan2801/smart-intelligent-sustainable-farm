@@ -24,6 +24,7 @@ import {
   resolveLabels,
   injectGapNulls,
 } from "../utils/telemetry";
+import { buildCsvString, downloadCsv } from "../utils/helpers/csv";
 
 import "../styles/dashboard.css";
 
@@ -140,26 +141,17 @@ export default function Dashboard() {
         return;
       }
 
-      // Build CSV (menggunakan titik koma agar otomatis terpisah di Excel locale ID)
       const headers = ["dev_id", "dev_status", "temperature", "humidity", "recorded_at"];
-      const csvRows = [
-        headers.join(";"),
-        ...json.data.map((row) =>
-          [row.dev_id, row.dev_status, row.tem, row.hum, row.recorded_at].join(";")
-        ),
-      ];
-      const csvString = csvRows.join("\n");
-
-      // Trigger download
-      const blob = new Blob([csvString], { type: "text/csv;charset=utf-8;" });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `sisf-export-${new Date().toISOString().slice(0, 10)}.csv`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+      const rows = json.data.map((row) => [
+        row.dev_id,
+        row.dev_status,
+        row.tem,
+        row.hum,
+        row.recorded_at,
+      ]);
+      const csvString = buildCsvString(headers, rows);
+      const filename = `sisf-export-${new Date().toISOString().slice(0, 10)}.csv`;
+      downloadCsv(filename, csvString);
     } catch {
       alert(t.exportError || "Export failed. Please try again.");
     } finally {
