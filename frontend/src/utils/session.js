@@ -69,10 +69,12 @@ export function getUserRole() {
   }
 }
 
+const API_BASE = import.meta.env.VITE_API_URL || "";
+
 export function authFetch(url, options = {}) {
   const token = getAccessToken();
 
-  return fetch(url, {
+  return fetch(`${API_BASE}${url}`, {
     ...options,
     headers: {
       "Content-Type": "application/json",
