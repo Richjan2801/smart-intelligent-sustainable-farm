@@ -10,7 +10,7 @@ import { publishMessage } from './mqttService.js';
 
 const router = Router();
 
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '1d';
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '15m';
 
 // JWT_SECRET is validated at server startup (server.js).
 // We read it here directly — no fallback allowed.
