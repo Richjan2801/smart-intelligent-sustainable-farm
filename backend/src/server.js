@@ -17,6 +17,22 @@ const app = express();
 
 app.use(cors());
 app.use(express.json());
+
+// ─────────────────────────────────────────────
+// HTTP REQUEST LOGGER
+// ─────────────────────────────────────────────
+app.use((req, res, next) => {
+  // Skip noisy health-check polls
+  if (req.path === '/health') return next();
+
+  const start = Date.now();
+  res.on('finish', () => {
+    const ms = Date.now() - start;
+    console.log(`[HTTP] ${req.method} ${req.originalUrl} → ${res.statusCode} (${ms}ms)`);
+  });
+  next();
+});
+
 app.use(router);
 
 const PORT = process.env.PORT || 3000;

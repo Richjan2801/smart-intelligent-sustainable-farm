@@ -69,12 +69,15 @@ export function getUserRole() {
   }
 }
 
-const API_BASE = import.meta.env.VITE_API_URL || "";
-
 export function authFetch(url, options = {}) {
   const token = getAccessToken();
 
-  return fetch(`${API_BASE}${url}`, {
+  // if caller passed a relative path (e.g. "/api/devices"),
+  // prepend the API base. If caller already passed a full URL, use as-is.
+  const API_BASE = import.meta.env.VITE_API_URL || "";
+  const resolvedUrl = url.startsWith("http") ? url : `${API_BASE}${url}`;
+
+  return fetch(resolvedUrl, {
     ...options,
     headers: {
       "Content-Type": "application/json",
