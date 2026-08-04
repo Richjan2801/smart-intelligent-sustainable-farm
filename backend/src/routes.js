@@ -461,17 +461,33 @@ router.get('/api/prediction', auth, authorize('export_data'), async (req, res) =
   try {
     const horizon = req.query.horizon || '1d';
 
-    const response = await fetch(
-      `${process.env.XGB_API_URL || 'http://localhost:5000'}/forecast?horizon=${horizon}`
-    );
+    let response;
+    let retries = 3;
+    while (retries > 0) {
+      try {
+        response = await fetch(`${process.env.XGB_API_URL}/forecast?horizon=${horizon}`);
+        break;
+      } catch (err) {
+        retries--;
+        if (retries === 0) throw err;
+        await new Promise(r => setTimeout(r, 1000));
+      }
+    }
+    
+    if (!response.ok) {
+      const body = await response.text();
+      console.error(`Prediction API returned status ${response.status}: ${body}`);
+      throw new Error(`Prediction service returned ${response.status}`);
+    }
 
     const data = await response.json();
 
     res.json(data);
-  } catch {
+  } catch (error) {
+    console.error('Prediction API Error:', error);
     res.status(503).json({
       status: 'error',
-      message: 'Prediction service unavailable',
+      message: `Prediction service unavailable: ${error.message}`,
     });
   }
 });

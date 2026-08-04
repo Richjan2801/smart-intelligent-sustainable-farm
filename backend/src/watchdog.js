@@ -20,8 +20,8 @@ export function startWatchdog() {
   if (watchdogInterval) clearInterval(watchdogInterval);
 
   console.log(
-    `[Watchdog] Started — timeout ${DEVICE_TIMEOUT / 1000}s, ` +
-    `threshold ${OFFLINE_THRESHOLD} misses`
+    `[Watchdog] Started — expecting data every ${SENSOR_INTERVAL / 1000}s, ` +
+    `timeout ${DEVICE_TIMEOUT / 1000}s, threshold ${OFFLINE_THRESHOLD} misses`
   );
 
   lastMessageTime = Date.now();
@@ -66,5 +66,8 @@ export function startWatchdog() {
 export function resetWatchdog() {
   lastMessageTime = Date.now();
   missCount = 0;
+  if (deviceMarkedOffline) {
+    console.log('[Watchdog] Device back online — MQTT data resumed');
+  }
   deviceMarkedOffline = false;
 }
