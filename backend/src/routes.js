@@ -505,7 +505,7 @@ router.get('/api/telemetry/export', auth, authorize('export_data'), async (req, 
        FROM sensor_data
        WHERE dev_id = $1
          AND ($2::timestamptz IS NULL OR recorded_at >= $2::timestamptz)
-         AND ($3::timestamptz IS NULL OR recorded_at <= $3::timestamptz)
+         AND ($3::timestamptz IS NULL OR recorded_at <= $3::timestamptz + interval '1 day' - interval '1 second')
        ORDER BY recorded_at ASC`,
       [DEVICE_ID, from || null, to || null]
     );
