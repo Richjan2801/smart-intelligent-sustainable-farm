@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Power } from "lucide-react";
 import { lang } from "../utils/lang";
 import { useConfig } from "../context/ConfigContext";
@@ -7,17 +7,41 @@ import "../styles/pumpcontrol.css";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
+// Pump auto-off duration in ms — harus sama dengan yang di firmware (30 detik)
+const PUMP_AUTO_OFF_MS = 30_000;
+
 export default function PumpControl({ pumpOn = false, deviceOnline = false, onTriggered }) {
   const [loading, setLoading] = useState(false);
   const [optimisticOn, setOptimisticOn] = useState(null);
   const { config } = useConfig();
   const t = lang[config.language];
 
+  const autoOffTimerRef = useRef(null);
+
   const displayedOn = optimisticOn ?? pumpOn;
 
+  // Saat pumpOn berubah dari server (via polling Dashboard), reset optimisticOn
   useEffect(() => {
     setOptimisticOn(null);
+    // Jika server konfirmasi pump mati, batalkan timer auto-clear
+    clearTimeout(autoOffTimerRef.current);
   }, [pumpOn]);
+
+  // Safety net: jika setelah pump auto-off firmware tidak kirim telemetry baru
+  // sehingga pumpOn tidak pernah berubah, paksa reset optimisticOn.
+  // Dashboard polling 5 detik seharusnya cukup, tapi ini jaga-jaga.
+  const startAutoOffTimer = useCallback(() => {
+    clearTimeout(autoOffTimerRef.current);
+    autoOffTimerRef.current = setTimeout(() => {
+      setOptimisticOn(null);
+      onTriggered?.(); // satu fetch untuk sync state dengan server
+    }, PUMP_AUTO_OFF_MS + 5_000);
+  }, [onTriggered]);
+
+  // Cleanup saat unmount
+  useEffect(() => {
+    return () => clearTimeout(autoOffTimerRef.current);
+  }, []);
 
   const handleTrigger = async (action) => {
     if (!deviceOnline) {
@@ -45,6 +69,11 @@ export default function PumpControl({ pumpOn = false, deviceOnline = false, onTr
       }
 
       setOptimisticOn(action === "on");
+      if (action === "on") {
+        startAutoOffTimer();
+      } else {
+        clearTimeout(autoOffTimerRef.current);
+      }
       onTriggered?.();
     } catch {
       alert(
