@@ -45,6 +45,7 @@ export default function Dashboard() {
   const [latest, setLatest] = useState(null);
   const [exportFrom, setExportFrom] = useState("");
   const [exportTo, setExportTo] = useState("");
+  const [exportError, setExportError] = useState("");
   const [historyData, setHistoryData] = useState([]);
   const [range, setRange] = useState("1h");
   const [loading, setLoading] = useState(true);
@@ -125,6 +126,15 @@ export default function Dashboard() {
   // ─────────────────────────────
 
   const handleExportCSV = useCallback(async () => {
+    if (exportFrom && exportTo && new Date(exportFrom) > new Date(exportTo)) {
+      setExportError(
+        config.language === "ID"
+          ? "Tanggal 'From' harus lebih awal atau sama dengan tanggal 'To'."
+          : "You must ensure the 'From' date is before or equal to the 'To' date."
+      );
+      return;
+    }
+    setExportError("");
     setExportLoading(true);
     try {
       let fetchUrl = `${API_URL}/api/telemetry/export`;
@@ -435,6 +445,12 @@ export default function Dashboard() {
                     ? (t.loading || "Loading...")
                     : (t.exportCSV || "Export CSV")}
                 </button>
+
+                {exportError && (
+                  <p className="text-red-500 text-sm mt-3 font-medium">
+                    {exportError}
+                  </p>
+                )}
               </div>
             </div>
           )}
