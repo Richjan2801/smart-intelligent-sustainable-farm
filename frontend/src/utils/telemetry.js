@@ -214,17 +214,8 @@ export function resolveLabels(
 ) {
   const isOnlineLive = deviceStatus === "online" && !isUsingFallback;
 
-  const temperatureLabel = isOnlineLive
-    ? t.currentTemp
-    : latestValidData
-      ? (t.latestTemp || (language === "EN" ? "Latest Temperature" : "Suhu Terbaru"))
-      : t.currentTemp;
-
-  const humidityLabel = isOnlineLive
-    ? t.currentHum
-    : latestValidData
-      ? (t.latestHum || (language === "EN" ? "Latest Humidity" : "Kelembapan Terbaru"))
-      : t.currentHum;
+  const temperatureLabel = isOnlineLive ? t.currentTemp : t.latestTemp;
+  const humidityLabel = isOnlineLive ? t.currentHum : t.latestHum;
 
   return { temperatureLabel, humidityLabel };
 }
