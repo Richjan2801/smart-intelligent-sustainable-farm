@@ -13,10 +13,10 @@
 #define HUM_THRESHOLD     40.0f   // % 
 #define PUMP_ON_DURATION  10000   // ms
 #define PUMP_COOLDOWN           30000
-#define PUMP_MANUAL_TIMEOUT     30000   // ms — auto-off jika manual trigger aktif > 30 detik
+#define PUMP_MANUAL_TIMEOUT     30000   // ms — auto-off if pump is turned on manually for too long
 
 // Buffer
-#define MAX_BUFFER_SIZE 50
+#define MAX_BUFFER_SIZE 4000 // only set for maximum 4000 entries to avoid memory exhaustion on ESP32
 
 // Timing
 #define READ_INTERVAL_MS      10000
