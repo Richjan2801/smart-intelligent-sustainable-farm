@@ -28,7 +28,7 @@ export function escapeCsvValue(value) {
  * @returns {string}
  */
 export function buildCsvString(headers, rows) {
-  const DELIMITER = ";";
+  const DELIMITER = ",";
   const csvRows = [
     headers.join(DELIMITER),
     ...rows.map((row) => row.map(escapeCsvValue).join(DELIMITER)),
