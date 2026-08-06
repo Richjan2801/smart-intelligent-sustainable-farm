@@ -190,13 +190,13 @@ void loop() {
         _lastValidPayload = p;
         _hasValidPayload  = true;
     } else if (_hasValidPayload) {
-        // DHT gagal sementara — publish cached dengan timestamp sekarang agar interval 10s tetap konsisten.
+        // DHT failed temporarily — publish cached with current timestamp
         p              = _lastValidPayload;
         p.pumpOn       = pump.isOn();
         p.capturedAtMs = millis();
         Serial.println("[Sensor] DHT read failed — publishing cached values.");
     } else {
-        Serial.println("[Sensor] DHT read failed, belum ada cached data — skip.");
+        Serial.println("[Sensor] DHT read failed, no cached data — skipping.");
         return;
     }
 

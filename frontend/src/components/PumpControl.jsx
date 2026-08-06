@@ -45,11 +45,7 @@ export default function PumpControl({ pumpOn = false, deviceOnline = false, onTr
 
   const handleTrigger = async (action) => {
     if (!deviceOnline) {
-      alert(
-        config.language === "ID"
-          ? "Perangkat offline — tidak dapat mengendalikan pompa."
-          : "Device is offline — pump control unavailable."
-      );
+      alert(t.deviceOffline || "Device is offline — pump control unavailable.");
       return;
     }
 
@@ -62,9 +58,7 @@ export default function PumpControl({ pumpOn = false, deviceOnline = false, onTr
       const json = await res.json();
 
       if (!res.ok || json.status !== "ok") {
-        alert(json.message || (config.language === "ID"
-          ? "Gagal mengirim perintah pompa."
-          : "Failed to trigger pump."));
+        alert(json.message || t.pumpFail || "Failed to trigger pump.");
         return;
       }
 
@@ -76,11 +70,7 @@ export default function PumpControl({ pumpOn = false, deviceOnline = false, onTr
       }
       onTriggered?.();
     } catch {
-      alert(
-        config.language === "ID"
-          ? "Gagal mengirim perintah pompa."
-          : "Failed to trigger pump."
-      );
+      alert(t.pumpFail || "Failed to trigger pump.");
     } finally {
       setTimeout(() => setLoading(false), 500);
     }
@@ -94,9 +84,7 @@ export default function PumpControl({ pumpOn = false, deviceOnline = false, onTr
         </div>
         <div className="pump-control-info">
           <p className="pump-control-desc">
-            {config.language === "ID"
-              ? "Kendali manual pompa penyiraman tanaman (GPIO 18)."
-              : "Manual override control for the irrigation pump (GPIO 18)."}
+            {t.pumpDesc || "Manual override control for the irrigation pump."}
           </p>
           <p className={`pump-status-label ${displayedOn ? "pump-status-on" : "pump-status-off"}`}>
             {displayedOn ? (t.pumpRunning || "Pump: ON") : (t.pumpStopped || "Pump: OFF")}
