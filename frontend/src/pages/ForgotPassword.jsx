@@ -10,18 +10,46 @@ export default function ForgotPassword() {
 
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (!email) {
-      setError("Please enter your email or username.");
+      setError("Please enter your email.");
       return;
     }
 
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setError("Invalid email format.");
+      return;
+    }
+
+    setLoading(true);
     setError("");
 
-    navigate("/reset-password");
+    try {
+      const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
+      const res = await fetch(`${API_URL}/api/auth/forgot-password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email })
+      });
+      const json = await res.json();
+      
+      if (!res.ok || json.status !== "ok") {
+        setError(json.message || "Failed to send reset email.");
+        return;
+      }
+      
+      setSuccess(true);
+    } catch (err) {
+      setError("Unable to connect to server.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -56,8 +84,14 @@ export default function ForgotPassword() {
             <p className="error-text">{error}</p>
           )}
 
-          <button className="auth-button">
-            Continue
+          {success && (
+            <p className="text-green-500 text-sm font-medium text-center">
+              If the email is registered, we have sent a reset link to it. Please check your inbox.
+            </p>
+          )}
+
+          <button className="auth-button" disabled={loading || success}>
+            {loading ? "Sending..." : "Continue"}
           </button>
         </form>
 

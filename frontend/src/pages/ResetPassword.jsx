@@ -1,5 +1,6 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { clearSession } from "../utils/session";
 
 import bg from "../assets/bg-login.jpg";
 
@@ -11,6 +12,16 @@ export default function ResetPassword() {
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const [searchParams] = useSearchParams();
+  const token = searchParams.get("token");
+
+  useEffect(() => {
+    if (!token) {
+      setError("Invalid or missing reset token. Please request a new link.");
+    }
+  }, [token]);
 
   // snippet states
   const [showConfirm, setShowConfirm] = useState(false);
@@ -19,8 +30,18 @@ export default function ResetPassword() {
   const handleReset = (e) => {
     e.preventDefault();
 
+    if (!token) {
+      setError("Invalid or missing reset token. Please request a new link.");
+      return;
+    }
+
     if (!password || !confirm) {
       setError("Please fill in all fields.");
+      return;
+    }
+
+    if (password.length < 8) {
+      setError("Password must be at least 8 characters.");
       return;
     }
 
@@ -35,16 +56,35 @@ export default function ResetPassword() {
     setShowConfirm(true);
   };
 
-  const handleConfirmReset = () => {
+  const handleConfirmReset = async () => {
     setShowConfirm(false);
-    setShowSuccess(true);
+    setLoading(true);
+    setError("");
 
-    // TODO: call API to actually reset the password here
-
-    // Redirect to login after a short delay
-    setTimeout(() => {
-      navigate("/login");
-    }, 2000);
+    try {
+      const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
+      const res = await fetch(`${API_URL}/api/auth/reset-password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, password })
+      });
+      const json = await res.json();
+      
+      if (!res.ok || json.status !== "ok") {
+        setError(json.message || "Failed to reset password.");
+        return;
+      }
+      
+      setShowSuccess(true);
+      setTimeout(() => {
+        clearSession();
+        navigate("/login");
+      }, 3000);
+    } catch (err) {
+      setError("Unable to connect to server.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleCancelReset = () => {
@@ -94,8 +134,8 @@ export default function ResetPassword() {
             <p className="error-text">{error}</p>
           )}
 
-          <button className="auth-button">
-            Reset Password
+          <button className="auth-button" disabled={loading || !token}>
+            {loading ? "Resetting..." : "Reset Password"}
           </button>
         </form>
 

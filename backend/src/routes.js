@@ -7,6 +7,9 @@ import { DEVICE_ID } from './watchdog.js';
 import { auth } from './middleware/auth.js';
 import { authorize } from './middleware/role.js';
 import { publishMessage } from './mqttService.js';
+import crypto from 'crypto';
+import dns from 'dns';
+import { sendPasswordResetEmail } from './emailService.js';
 
 const router = Router();
 
@@ -148,6 +151,134 @@ router.post('/api/auth/login', async (req, res) => {
       status: 'error',
       message: err.message,
     });
+  }
+});
+
+
+// ─────────────────────────────────────────────
+// FORGOT PASSWORD (PUBLIC)
+// ─────────────────────────────────────────────
+router.post('/api/auth/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ status: 'error', message: 'Email is required' });
+    }
+
+    // 1. Basic format validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ status: 'error', message: 'Invalid email format' });
+    }
+
+    // 2. Domain MX Record validation
+    const domain = email.split('@')[1];
+    try {
+      const records = await dns.promises.resolveMx(domain);
+      if (!records || records.length === 0) {
+        return res.status(400).json({ status: 'error', message: 'Email domain is invalid or does not accept emails' });
+      }
+    } catch (dnsErr) {
+      // If domain doesn't exist or has no MX records
+      return res.status(400).json({ status: 'error', message: 'Email domain is invalid or does not accept emails' });
+    }
+
+    // 3. Find user
+    const { rows } = await pool.query(
+      `SELECT user_id FROM users WHERE LOWER(email) = LOWER($1) LIMIT 1`,
+      [email]
+    );
+
+    // We still return success even if user not found to prevent email enumeration
+    if (rows.length === 0) {
+      return res.json({ status: 'ok', message: 'If that email is registered, we have sent a reset link.' });
+    }
+
+    const userId = rows[0].user_id;
+
+    // 4. Generate token and save
+    const token = crypto.randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + 30 * 60 * 1000); // 30 mins
+
+    await pool.query(
+      `INSERT INTO password_reset_tokens (user_id, token, expires_at) VALUES ($1, $2, $3)`,
+      [userId, token, expiresAt.toISOString()]
+    );
+
+    // 5. Send email
+    await sendPasswordResetEmail(email, token);
+
+    res.json({ status: 'ok', message: 'If that email is registered, we have sent a reset link.' });
+  } catch (err) {
+    res.status(500).json({ status: 'error', message: err.message });
+  }
+});
+
+
+// ─────────────────────────────────────────────
+// RESET PASSWORD (PUBLIC)
+// ─────────────────────────────────────────────
+router.post('/api/auth/reset-password', async (req, res) => {
+  try {
+    const { token, password } = req.body;
+
+    if (!token || !password) {
+      return res.status(400).json({ status: 'error', message: 'Token and new password are required' });
+    }
+
+    if (password.length < 8) {
+      return res.status(400).json({ status: 'error', message: 'Password must be at least 8 characters' });
+    }
+
+    // 1. Find token
+    const { rows } = await pool.query(
+      `SELECT id, user_id, expires_at, used FROM password_reset_tokens WHERE token = $1 LIMIT 1`,
+      [token]
+    );
+
+    if (rows.length === 0) {
+      return res.status(400).json({ status: 'error', message: 'Invalid or expired reset token' });
+    }
+
+    const resetRequest = rows[0];
+
+    // 2. Validate token
+    if (resetRequest.used) {
+      return res.status(400).json({ status: 'error', message: 'This reset link has already been used' });
+    }
+    
+    if (new Date() > new Date(resetRequest.expires_at)) {
+      return res.status(400).json({ status: 'error', message: 'This reset link has expired' });
+    }
+
+    // 3. Update password and mark token as used transactionally
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      const passwordHash = await bcrypt.hash(password, 12);
+      
+      await client.query(
+        `UPDATE users SET password_hash = $1 WHERE user_id = $2`,
+        [passwordHash, resetRequest.user_id]
+      );
+
+      await client.query(
+        `UPDATE password_reset_tokens SET used = true WHERE id = $1`,
+        [resetRequest.id]
+      );
+
+      await client.query('COMMIT');
+      res.json({ status: 'ok', message: 'Password has been reset successfully' });
+    } catch (txErr) {
+      await client.query('ROLLBACK');
+      throw txErr;
+    } finally {
+      client.release();
+    }
+  } catch (err) {
+    res.status(500).json({ status: 'error', message: err.message });
   }
 });
 
