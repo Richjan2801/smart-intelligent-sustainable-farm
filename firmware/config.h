@@ -16,7 +16,8 @@
 #define PUMP_MANUAL_TIMEOUT     30000   // ms — auto-off if pump is turned on manually for too long
 
 // Buffer
-#define MAX_BUFFER_SIZE 4000 // only set for maximum 4000 entries to avoid memory exhaustion on ESP32
+#define MAX_BUFFER_SIZE    4000  // max entries to avoid memory exhaustion on ESP32
+#define FLUSH_CHUNK_SIZE   10    // records sent per loop() cycle during flush
 
 // Timing
 #define READ_INTERVAL_MS      10000

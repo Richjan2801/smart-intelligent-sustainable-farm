@@ -34,30 +34,38 @@ void connectWiFiBlocking() {
     Serial.println(WiFi.status() == WL_CONNECTED ? " Connected!" : " Failed.");
 }
 
-void flushBuffer() {
-    if (buffer.isEmpty()) return;
-
-    Serial.printf("[Buffer] Flushing %d entries...\n", buffer.count());
-    _flushing = true;
-
-    SensorPayload p;
-    while (buffer.peek(p)) {
-        pump.update();
-        if (!mqtt.isConnected()) {
-            Serial.println("[Buffer] Connection lost during flush — aborting.");
-            break;
+// Non-blocking flush: sends at most FLUSH_CHUNK_SIZE records per call.
+// Called every loop() cycle so the system stays fully responsive.
+void flushBufferChunk() {
+    if (!_flushing || buffer.isEmpty()) {
+        if (_flushing && buffer.isEmpty()) {
+            _flushing = false;
+            Serial.println("[Buffer] Flush complete — buffer is empty.");
         }
-        if (mqtt.publish(p, true)) {
-            buffer.pop(p);
-        } else {
-            Serial.println("[Buffer] Flush publish failed — will retry next reconnect.");
-            break;
-        }
-        mqtt.loop();
+        return;
     }
 
-    _flushing = false;
-    Serial.printf("[Buffer] Flush done. Remaining: %d\n", buffer.count());
+    if (!mqtt.isConnected()) {
+        _flushing = false;
+        Serial.println("[Buffer] Connection lost during flush — pausing.");
+        return;
+    }
+
+    int sent = 0;
+    SensorPayload p;
+    while (sent < FLUSH_CHUNK_SIZE && buffer.peek(p)) {
+        if (mqtt.publish(p, true)) {
+            buffer.pop(p);
+            sent++;
+        } else {
+            Serial.println("[Buffer] Publish failed mid-chunk — will retry next cycle.");
+            break;
+        }
+    }
+
+    if (sent > 0) {
+        Serial.printf("[Buffer] Flushed %d records | Remaining: %d\n", sent, buffer.count());
+    }
 }
 
 void syncNTP() {
@@ -162,6 +170,7 @@ void loop() {
     pump.update();
     mqtt.loop();
 
+    // Reconnection logic
     if (!_flushing && millis() - lastReconnect >= RECONNECT_DELAY_MS) {
         lastReconnect = millis();
         if (WiFi.status() != WL_CONNECTED) {
@@ -172,10 +181,17 @@ void loop() {
             syncNTP();
             if (mqtt.connect()) {
                 mqtt.subscribe(MQTT_PUMP_TOPIC);
-                flushBuffer();
+                // Start the chunked flush — actual sending happens in flushBufferChunk()
+                if (!buffer.isEmpty()) {
+                    _flushing = true;
+                    Serial.printf("[Buffer] Starting chunked flush of %d entries...\n", buffer.count());
+                }
             }
         }
     }
+
+    // Non-blocking chunked flush (runs every loop cycle)
+    flushBufferChunk();
 
     unsigned long now = millis();
     if (now - lastReadMs < READ_INTERVAL_MS) return;
