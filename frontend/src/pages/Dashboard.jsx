@@ -185,7 +185,7 @@ export default function Dashboard() {
 
       delete cacheRef.current[range];
       fetchHistory(range);
-    }, 5000);
+    }, 30000);
 
     return () => clearInterval(interval);
   }, [range]);

@@ -20,7 +20,7 @@
 #define FLUSH_CHUNK_SIZE   10    // records sent per loop() cycle during flush
 
 // Timing
-#define READ_INTERVAL_MS      10000
+#define READ_INTERVAL_MS      60000
 #define RECONNECT_DELAY_MS    5000
 #define DHT_MIN_INTERVAL_MS   2100   // DHT11 minimum gap between reads
 

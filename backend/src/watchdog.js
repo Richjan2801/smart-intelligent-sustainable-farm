@@ -1,7 +1,7 @@
 import { markLatestRowOffline } from './db.js';
 
 export const DEVICE_ID = Number(process.env.DEFAULT_DEVICE_ID);
-const SENSOR_INTERVAL = Number(process.env.SENSOR_INTERVAL_MS);
+const SENSOR_INTERVAL = Number(process.env.VITE_SENSOR_INTERVAL_MS || process.env.SENSOR_INTERVAL_MS || 60000);
 // Timeout = sensor interval + 5 s margin
 const DEVICE_TIMEOUT = SENSOR_INTERVAL + 5000;
 const OFFLINE_THRESHOLD = Number(process.env.OFFLINE_THRESHOLD) || 3;
