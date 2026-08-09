@@ -128,6 +128,7 @@ export default function ChartCard({
           <YAxis
             domain={yDomain}
             tickMargin={8}
+            tickFormatter={(value) => Number(value).toFixed(1)}
           />
 
           <Tooltip

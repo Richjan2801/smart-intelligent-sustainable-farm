@@ -485,28 +485,49 @@ router.get('/api/telemetry/latest', auth, authorize('view_dashboard'), async (re
 
 router.get('/api/telemetry/history', auth, authorize('view_dashboard'), async (req, res) => {
   try {
-    // Map the frontend range string to a PostgreSQL interval
-    const RANGE_TO_INTERVAL = {
-      '1h':  '1 hour',
-      '1d':  '1 day',
-      '7d':  '7 days',
-      '30d': '30 days',
+    const RANGE_CONFIG = {
+      '1h':  { interval: '1 hour',   bucket: null },        // raw, no downsampling
+      '1d':  { interval: '1 day',    bucket: '5 minutes' },
+      '7d':  { interval: '7 days',   bucket: '30 minutes' },
+      '30d': { interval: '30 days',  bucket: '2 hours' },
     };
 
     const range = req.query.range || '1h';
-    const interval = RANGE_TO_INTERVAL[range] ?? '1 hour';
-    const limit = Math.min(parseInt(req.query.limit) || 500, 1000);
+    const { interval, bucket } = RANGE_CONFIG[range] ?? RANGE_CONFIG['1h'];
     const devId = parseInt(req.query.dev_id) || DEVICE_ID;
 
-    const { rows } = await pool.query(
-      `SELECT dev_id, dev_status, tem, hum, pump_on, recorded_at
-       FROM sensor_data
-       WHERE dev_id = $1
-         AND recorded_at >= NOW() - $2::interval
-       ORDER BY recorded_at ASC
-       LIMIT $3`,
-      [devId, interval, limit]
-    );
+    let rows;
+
+    if (bucket) {
+      // Downsampled: average tem/hum per bucket, keep latest pump_on/dev_status in bucket
+      const result = await pool.query(
+        `SELECT 
+           dev_id,
+           (array_agg(dev_status ORDER BY recorded_at DESC))[1] AS dev_status,
+           AVG(tem) AS tem,
+           AVG(hum) AS hum,
+           (array_agg(pump_on ORDER BY recorded_at DESC))[1] AS pump_on,
+           date_bin($3::interval, recorded_at, TIMESTAMPTZ '2000-01-01') AS recorded_at
+         FROM sensor_data
+         WHERE dev_id = $1
+           AND recorded_at >= NOW() - $2::interval
+         GROUP BY dev_id, date_bin($3::interval, recorded_at, TIMESTAMPTZ '2000-01-01')
+         ORDER BY recorded_at ASC`,
+        [devId, interval, bucket]
+      );
+      rows = result.rows;
+    } else {
+      // Raw data for short ranges (1h)
+      const result = await pool.query(
+        `SELECT dev_id, dev_status, tem, hum, pump_on, recorded_at
+         FROM sensor_data
+         WHERE dev_id = $1
+           AND recorded_at >= NOW() - $2::interval
+         ORDER BY recorded_at ASC`,
+        [devId, interval]
+      );
+      rows = result.rows;
+    }
 
     res.json({
       status: 'ok',
@@ -514,7 +535,6 @@ router.get('/api/telemetry/history', auth, authorize('view_dashboard'), async (r
     });
   } catch (err) {
     res.status(500).json({ status: 'error', message: err.message });
-
   }
 });
 
