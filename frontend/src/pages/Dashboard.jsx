@@ -37,7 +37,7 @@ export default function Dashboard() {
   const { config } = useConfig();
   const t = lang[config.language];
 
-  const role = getUserRole(); // 🔥 RBAC
+  const role = getUserRole();
 
   const [exportLoading, setExportLoading] = useState(false);
   const [dbError, setDbError] = useState(false);
