@@ -48,6 +48,7 @@ export default function Dashboard() {
   const [exportError, setExportError] = useState("");
   const [historyData, setHistoryData] = useState([]);
   const [range, setRange] = useState("1h");
+  const [selectedDevice, setSelectedDevice] = useState(null);
   const [loading, setLoading] = useState(true);
 
   const cacheRef = useRef({});
@@ -74,28 +75,33 @@ export default function Dashboard() {
   // ─────────────────────────────
 
   const fetchDeviceStatus = useCallback(async () => {
+    if (!selectedDevice) return;
     try {
-      const res = await authFetch(`${API_URL}/api/device/status`);
+      const res = await authFetch(`${API_URL}/api/device/status?dev_id=${selectedDevice}`);
       const json = await res.json();
       if (json.status === "ok") {
         setDeviceStatus(json.data.dev_status);
       }
     } catch {}
-  }, []);
+  }, [selectedDevice]);
 
   const fetchLatest = useCallback(async () => {
+    if (!selectedDevice) return;
     try {
-      const res = await authFetch(`${API_URL}/api/telemetry/latest`);
+      const res = await authFetch(`${API_URL}/api/telemetry/latest?dev_id=${selectedDevice}`);
       const json = await res.json();
       if (json.status === "ok") {
         setLatest(json.data);
       }
     } catch {}
-  }, []);
+  }, [selectedDevice]);
 
   const fetchHistory = useCallback(async (selectedRange) => {
-    if (cacheRef.current[selectedRange]) {
-      setHistoryData(cacheRef.current[selectedRange]);
+    if (!selectedDevice) return;
+
+    const cacheKey = `${selectedDevice}_${selectedRange}`;
+    if (cacheRef.current[cacheKey]) {
+      setHistoryData(cacheRef.current[cacheKey]);
       return;
     }
 
@@ -103,13 +109,13 @@ export default function Dashboard() {
 
     try {
       const res = await authFetch(
-        `${API_URL}/api/telemetry/history?range=${selectedRange}&limit=500`
+        `${API_URL}/api/telemetry/history?range=${selectedRange}&limit=500&dev_id=${selectedDevice}`
       );
 
       const json = await res.json();
       const transformed = transformHistoryRows(json.data || []);
 
-      cacheRef.current[selectedRange] = transformed;
+      cacheRef.current[cacheKey] = transformed;
       setHistoryData(transformed);
     } catch {
       setHistoryData([]);
@@ -119,7 +125,7 @@ export default function Dashboard() {
         isFirstLoadRef.current = false;
       }
     }
-  }, []);
+  }, [selectedDevice]);
 
   // ─────────────────────────────
   // EXPORT CSV
@@ -175,6 +181,8 @@ export default function Dashboard() {
   // ─────────────────────────────
 
   useEffect(() => {
+    if (!selectedDevice) return;
+
     fetchDeviceStatus();
     fetchLatest();
     fetchHistory(range);
@@ -183,12 +191,18 @@ export default function Dashboard() {
       fetchLatest();
       fetchDeviceStatus();
 
-      delete cacheRef.current[range];
+      delete cacheRef.current[`${selectedDevice}_${range}`];
       fetchHistory(range);
     }, 30000);
 
     return () => clearInterval(interval);
-  }, [range]);
+  }, [range, selectedDevice]);
+
+  useEffect(() => {
+    if (config.devices.length > 0 && selectedDevice === null) {
+      setSelectedDevice(config.devices[0].id);
+    }
+  }, [config.devices]);
 
   // ─────────────────────────────
   // DATA RESOLVE
@@ -273,7 +287,15 @@ export default function Dashboard() {
 
             {hasPermission(role, "view_device_status") ? (
               <div className="device-row">
-                <select className="device-select">
+                <select
+                  className="device-select"
+                  value={selectedDevice || ""}
+                  onChange={(e) => {
+                    const newId = Number(e.target.value);
+                    setSelectedDevice(newId);
+                    cacheRef.current = {};
+                  }}
+                >
                   {config.devices.map((d) => (
                     <option key={d.id} value={d.id}>
                       {d.name} ({d.id})

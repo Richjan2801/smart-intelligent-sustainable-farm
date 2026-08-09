@@ -460,13 +460,17 @@ router.post('/api/pump/trigger', auth, authorize('trigger_pump'), async (req, re
 // ─────────────────────────────────────────────
 // TELEMETRY (PROTECTED)
 // ─────────────────────────────────────────────
-router.get('/api/telemetry/latest', auth, authorize('view_dashboard'), async (_req, res) => {
+router.get('/api/telemetry/latest', auth, authorize('view_dashboard'), async (req, res) => {
   try {
+    const devId = parseInt(req.query.dev_id) || DEVICE_ID;
+
     const { rows } = await pool.query(
       `SELECT dev_id, dev_status, tem, hum, pump_on, recorded_at
        FROM sensor_data
+       WHERE dev_id = $1
        ORDER BY recorded_at DESC
-       LIMIT 1`
+       LIMIT 1`,
+      [devId]
     );
 
     res.json({
@@ -492,6 +496,7 @@ router.get('/api/telemetry/history', auth, authorize('view_dashboard'), async (r
     const range = req.query.range || '1h';
     const interval = RANGE_TO_INTERVAL[range] ?? '1 hour';
     const limit = Math.min(parseInt(req.query.limit) || 500, 1000);
+    const devId = parseInt(req.query.dev_id) || DEVICE_ID;
 
     const { rows } = await pool.query(
       `SELECT dev_id, dev_status, tem, hum, pump_on, recorded_at
@@ -500,7 +505,7 @@ router.get('/api/telemetry/history', auth, authorize('view_dashboard'), async (r
          AND recorded_at >= NOW() - $2::interval
        ORDER BY recorded_at ASC
        LIMIT $3`,
-      [DEVICE_ID, interval, limit]
+      [devId, interval, limit]
     );
 
     res.json({
@@ -523,10 +528,9 @@ router.get('/api/telemetry/raw', auth, authorize('view_raw_logs'), async (req, r
     const { rows } = await pool.query(
       `SELECT dev_id, dev_status, tem, hum, pump_on, recorded_at
        FROM sensor_data
-       WHERE dev_id = $1
        ORDER BY recorded_at DESC
-       LIMIT $2`,
-      [DEVICE_ID, limit]
+       LIMIT $1`,
+      [limit]
     );
 
     res.json({
@@ -542,21 +546,23 @@ router.get('/api/telemetry/raw', auth, authorize('view_raw_logs'), async (req, r
 // ─────────────────────────────────────────────
 // DEVICE STATUS (PROTECTED)
 // ─────────────────────────────────────────────
-router.get('/api/device/status', auth, authorize('view_device_status'), async (_req, res) => {
+router.get('/api/device/status', auth, authorize('view_device_status'), async (req, res) => {
   try {
+    const devId = parseInt(req.query.dev_id) || DEVICE_ID;
+
     const { rows } = await pool.query(
       `SELECT dev_id, dev_status, recorded_at
        FROM sensor_data
        WHERE dev_id = $1
        ORDER BY recorded_at DESC
        LIMIT 1`,
-      [DEVICE_ID]
+      [devId]
     );
 
     res.json({
       status: 'ok',
       data: rows[0] || {
-        dev_id: DEVICE_ID,
+        dev_id: devId,
         dev_status: 'offline',
       },
     });
@@ -634,11 +640,10 @@ router.get('/api/telemetry/export', auth, authorize('export_data'), async (req, 
     const { rows } = await pool.query(
       `SELECT dev_id, dev_status, tem, hum, pump_on, recorded_at
        FROM sensor_data
-       WHERE dev_id = $1
-         AND ($2::timestamptz IS NULL OR recorded_at >= $2::timestamptz)
-         AND ($3::timestamptz IS NULL OR recorded_at <= $3::timestamptz + interval '1 day' - interval '1 second')
+       WHERE ($1::timestamptz IS NULL OR recorded_at >= $1::timestamptz)
+         AND ($2::timestamptz IS NULL OR recorded_at <= $2::timestamptz + interval '1 day' - interval '1 second')
        ORDER BY recorded_at DESC`,
-      [DEVICE_ID, from || null, to || null]
+      [from || null, to || null]
     );
 
     res.json({

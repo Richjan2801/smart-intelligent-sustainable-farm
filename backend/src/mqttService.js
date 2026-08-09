@@ -63,8 +63,10 @@ mqttClient.on('message', (_topic, message) => {
         resetWatchdog();
       }
 
+      const devId = payload.dev_id ?? DEVICE_ID;
+
       await insertSensorData({
-        devId: DEVICE_ID,
+        devId,
         devStatus,
         tem,
         hum,
