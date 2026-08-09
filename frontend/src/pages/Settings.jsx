@@ -40,72 +40,73 @@ export default function Settings() {
         <Header />
 
         <div className="settings-content space-y-12">
-          
-          {/* DEVICE */}
-          <div className="settings-section">
-            <div className="flex items-center gap-3 mb-6">
-              <SectionTitle title={t.device} />
-              {!canEdit && (
-                <span className="px-2 py-1 bg-gray-200 text-gray-600 text-xs font-bold rounded">
-                  {t.adminOnly || "Admin Only"}
-                </span>
-              )}
-            </div>
+          {/* DEVICE (Hidden for admins, as they use Manage Devices) */}
+          {role !== 'admin' && (
+            <div className="settings-section">
+              <div className="flex items-center gap-3 mb-6">
+                <SectionTitle title={t.device} />
+                {!canEdit && (
+                  <span className="px-2 py-1 bg-gray-200 text-gray-600 text-xs font-bold rounded">
+                    {t.adminOnly || "Admin Only"}
+                  </span>
+                )}
+              </div>
 
-            <div className="settings-card space-y-4">
-              {config.devices.length === 0 ? (
-                <p className="text-gray-500 text-sm">
-                  Loading devices from database...
-                </p>
-              ) : (
-                config.devices.map((device, i) => (
-                  <div
-                    key={device.id}
-                    className="grid grid-cols-2 gap-6"
-                  >
-                    {/* DEVICE NAME */}
-                    <div>
-                      <label>
-                        {t.deviceName}
-                      </label>
+              <div className="settings-card space-y-4">
+                {config.devices.length === 0 ? (
+                  <p className="text-gray-500 text-sm">
+                    Loading devices from database...
+                  </p>
+                ) : (
+                  config.devices.map((device, i) => (
+                    <div
+                      key={device.id}
+                      className="grid grid-cols-2 gap-6"
+                    >
+                      {/* DEVICE NAME */}
+                      <div>
+                        <label>
+                          {t.deviceName}
+                        </label>
 
-                      <input
-                        value={device.name}
-                        disabled={!canEdit}
-                        onChange={(e) => {
-                          const newDevices = [
-                            ...config.devices,
-                          ];
+                        <input
+                          value={device.name}
+                          disabled={!canEdit}
+                          onChange={(e) => {
+                            const newDevices = [
+                              ...config.devices,
+                            ];
 
-                          newDevices[i].name =
-                            e.target.value;
+                            newDevices[i].name =
+                              e.target.value;
 
-                          setConfig((prev) => ({
-                            ...prev,
-                            devices: newDevices,
-                          }));
-                        }}
-                        className={`settings-input ${!canEdit ? "settings-input-disabled" : ""}`}
-                      />
+                            setConfig((prev) => ({
+                              ...prev,
+                              devices: newDevices,
+                            }));
+                          }}
+                          className={`settings-input ${!canEdit ? "settings-input-disabled" : ""}`}
+                        />
+                      </div>
+
+                      {/* DEVICE ID */}
+                      <div>
+                        <label>
+                          {t.deviceId}
+                        </label>
+
+                        <input
+                          value={device.id}
+                          disabled
+                          className="settings-input settings-input-disabled"
+                        />
+                      </div>
                     </div>
-
-                    {/* DEVICE ID */}
-                    <div>
-                      <label>
-                        {t.deviceId}
-                      </label>
-
-                      <input
-                        value={device.id}
-                        disabled
-                        className="settings-input settings-input-disabled"
-                      />
-                    </div>
-                  </div>
-                ))
-              )}
+                  ))
+                )}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* DISPLAY */}
           <div className="settings-section">
