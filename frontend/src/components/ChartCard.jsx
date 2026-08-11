@@ -142,7 +142,7 @@ export default function ChartCard({
             stroke={color}
             strokeWidth={3}
             strokeDasharray={dashed ? "8 6" : ""}
-            connectNulls={false}
+            connectNulls={true}
             dot={false}
             activeDot={false}
           />
