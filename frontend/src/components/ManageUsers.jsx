@@ -7,6 +7,7 @@ import "../styles/manageusers.css";
 
 export default function ManageUsers() {
   const [users, setUsers] = useState([]);
+  const [availableRoles, setAvailableRoles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const { config } = useConfig();
@@ -15,7 +16,25 @@ export default function ManageUsers() {
 
   useEffect(() => {
     fetchUsers();
+    fetchRoles();
   }, []);
+
+  const fetchRoles = async () => {
+    try {
+      const res = await authFetch('/api/rbac/roles');
+      const json = await res.json();
+      if (json.status === 'ok') {
+        setAvailableRoles(json.data);
+      }
+    } catch (err) {
+      // Fallback to defaults if RBAC tables don't exist yet
+      setAvailableRoles([
+        { role_id: 1, name: 'farmer' },
+        { role_id: 2, name: 'researcher' },
+        { role_id: 3, name: 'admin' },
+      ]);
+    }
+  };
 
   const fetchUsers = async () => {
     try {
@@ -98,15 +117,17 @@ export default function ManageUsers() {
                   <td className="font-medium">{u.username} {isSelf && "(You)"}</td>
                   <td>{u.email}</td>
                   <td>
-                    <select
+                      <select
                       value={u.role}
                       disabled={isSelf}
                       onChange={(e) => handleRoleChange(u.user_id, e.target.value)}
                       className={`role-select role-${u.role}`}
                     >
-                      <option value="farmer">Farmer</option>
-                      <option value="researcher">Researcher</option>
-                      <option value="admin">Admin</option>
+                      {availableRoles.map(r => (
+                        <option key={r.role_id} value={r.name}>
+                          {r.name.charAt(0).toUpperCase() + r.name.slice(1)}
+                        </option>
+                      ))}
                     </select>
                   </td>
                   <td>{new Date(u.created_at).toLocaleDateString()}</td>

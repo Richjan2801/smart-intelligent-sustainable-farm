@@ -6,6 +6,7 @@ import SectionTitle from "../components/SectionTitle";
 import Toggle from "../components/Toggle";
 import ManageDevices from "../components/ManageDevices";
 import ManageUsers from "../components/ManageUsers";
+import ManagePermissions from "../components/ManagePermissions";
 
 import { useConfig } from "../context/ConfigContext";
 import { lang } from "../utils/lang";
@@ -172,6 +173,14 @@ export default function Settings() {
             <div className="settings-section">
               <SectionTitle title={t.manageUsers || "Manage Users"} />
               <ManageUsers />
+            </div>
+          )}
+
+          {/* MANAGE PERMISSIONS (admin only) */}
+          {hasPermission(role, 'manage_rbac') && (
+            <div className="settings-section">
+              <SectionTitle title={t.managePermissions || 'Manage Permissions'} />
+              <ManagePermissions />
             </div>
           )}
 

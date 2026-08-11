@@ -10,6 +10,7 @@ import { publishMessage } from './mqttService.js';
 import crypto from 'crypto';
 import dns from 'dns';
 import { sendPasswordResetEmail } from './emailService.js';
+import { loadPermissions } from './middleware/permissionCache.js';
 
 const router = Router();
 
@@ -340,7 +341,9 @@ router.put('/api/users/:id/role', auth, authorize('manage_users'), async (req, r
       return res.status(403).json({ status: 'error', message: 'Cannot change your own role' });
     }
 
-    if (!['farmer', 'researcher', 'admin'].includes(role)) {
+    // Validate role exists in the database
+    const roleCheck = await pool.query(`SELECT 1 FROM roles WHERE name = $1`, [role]);
+    if (roleCheck.rows.length === 0) {
       return res.status(400).json({ status: 'error', message: 'Invalid role' });
     }
 
@@ -676,5 +679,191 @@ router.get('/api/telemetry/export', auth, authorize('export_data'), async (req, 
   }
 });
 
+// ─────────────────────────────────────────────
+// RBAC MANAGEMENT (PROTECTED — admin only)
+// ─────────────────────────────────────────────
+
+// List all roles
+router.get('/api/rbac/roles', auth, authorize('manage_rbac'), async (_req, res) => {
+  try {
+    const { rows } = await pool.query(`SELECT role_id, name FROM roles ORDER BY role_id ASC`);
+    res.json({ status: 'ok', data: rows });
+  } catch (err) {
+    res.status(500).json({ status: 'error', message: err.message });
+  }
+});
+
+// List all permissions
+router.get('/api/rbac/permissions', auth, authorize('manage_rbac'), async (_req, res) => {
+  try {
+    const { rows } = await pool.query(`SELECT permission_id, name FROM permissions ORDER BY permission_id ASC`);
+    res.json({ status: 'ok', data: rows });
+  } catch (err) {
+    res.status(500).json({ status: 'error', message: err.message });
+  }
+});
+
+// Get full role-permission mapping
+router.get('/api/rbac/role-permissions', auth, async (_req, res) => {
+  try {
+    const { rows } = await pool.query(`
+      SELECT r.name AS role, p.name AS permission
+      FROM role_permissions rp
+      JOIN roles r ON r.role_id = rp.role_id
+      JOIN permissions p ON p.permission_id = rp.permission_id
+      ORDER BY r.name, p.name
+    `);
+
+    // Group by role
+    const mapping = {};
+    for (const row of rows) {
+      if (!mapping[row.role]) mapping[row.role] = [];
+      mapping[row.role].push(row.permission);
+    }
+
+    res.json({ status: 'ok', data: mapping });
+  } catch (err) {
+    res.status(500).json({ status: 'error', message: err.message });
+  }
+});
+
+// Create a new role
+router.post('/api/rbac/roles', auth, authorize('manage_rbac'), async (req, res) => {
+  try {
+    const { name } = req.body;
+    if (!name || !name.trim()) {
+      return res.status(400).json({ status: 'error', message: 'Role name is required' });
+    }
+
+    const { rows } = await pool.query(
+      `INSERT INTO roles (name) VALUES ($1) RETURNING role_id, name`,
+      [name.trim().toLowerCase()]
+    );
+
+    res.status(201).json({ status: 'ok', data: rows[0] });
+  } catch (err) {
+    if (err.code === '23505') {
+      return res.status(409).json({ status: 'error', message: 'Role already exists' });
+    }
+    res.status(500).json({ status: 'error', message: err.message });
+  }
+});
+
+// Delete a role
+router.delete('/api/rbac/roles/:id', auth, authorize('manage_rbac'), async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Prevent deleting roles that are currently assigned to users
+    const usersWithRole = await pool.query(
+      `SELECT COUNT(*)::int AS count FROM users u JOIN roles r ON u.role = r.name WHERE r.role_id = $1`,
+      [id]
+    );
+
+    if (usersWithRole.rows[0].count > 0) {
+      return res.status(400).json({
+        status: 'error',
+        message: `Cannot delete role: ${usersWithRole.rows[0].count} user(s) still assigned to this role`,
+      });
+    }
+
+    const { rowCount } = await pool.query(`DELETE FROM roles WHERE role_id = $1`, [id]);
+    if (rowCount === 0) return res.status(404).json({ status: 'error', message: 'Role not found' });
+
+    res.json({ status: 'ok', message: 'Role deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ status: 'error', message: err.message });
+  }
+});
+
+// Create a new permission
+router.post('/api/rbac/permissions', auth, authorize('manage_rbac'), async (req, res) => {
+  try {
+    const { name } = req.body;
+    if (!name || !name.trim()) {
+      return res.status(400).json({ status: 'error', message: 'Permission name is required' });
+    }
+
+    const { rows } = await pool.query(
+      `INSERT INTO permissions (name) VALUES ($1) RETURNING permission_id, name`,
+      [name.trim().toLowerCase().replace(/\s+/g, '_')]
+    );
+
+    res.status(201).json({ status: 'ok', data: rows[0] });
+  } catch (err) {
+    if (err.code === '23505') {
+      return res.status(409).json({ status: 'error', message: 'Permission already exists' });
+    }
+    res.status(500).json({ status: 'error', message: err.message });
+  }
+});
+
+// Delete a permission
+router.delete('/api/rbac/permissions/:id', auth, authorize('manage_rbac'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { rowCount } = await pool.query(`DELETE FROM permissions WHERE permission_id = $1`, [id]);
+    if (rowCount === 0) return res.status(404).json({ status: 'error', message: 'Permission not found' });
+
+    res.json({ status: 'ok', message: 'Permission deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ status: 'error', message: err.message });
+  }
+});
+
+// Update permissions for a role (replace all permissions)
+router.put('/api/rbac/roles/:id/permissions', auth, authorize('manage_rbac'), async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { id } = req.params;
+    const { permissions } = req.body; // array of permission names
+
+    if (!Array.isArray(permissions)) {
+      return res.status(400).json({ status: 'error', message: 'permissions must be an array' });
+    }
+
+    await client.query('BEGIN');
+
+    // Remove all current permissions for this role
+    await client.query(`DELETE FROM role_permissions WHERE role_id = $1`, [id]);
+
+    // Insert new permissions
+    if (permissions.length > 0) {
+      const permResult = await client.query(
+        `SELECT permission_id FROM permissions WHERE name = ANY($1)`,
+        [permissions]
+      );
+
+      for (const perm of permResult.rows) {
+        await client.query(
+          `INSERT INTO role_permissions (role_id, permission_id) VALUES ($1, $2)`,
+          [id, perm.permission_id]
+        );
+      }
+    }
+
+    await client.query('COMMIT');
+
+    // Auto-refresh the in-memory cache
+    await loadPermissions();
+
+    res.json({ status: 'ok', message: 'Role permissions updated successfully' });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    res.status(500).json({ status: 'error', message: err.message });
+  } finally {
+    client.release();
+  }
+});
+
+// Refresh permission cache (admin endpoint)
+router.post('/api/admin/refresh-permissions', auth, authorize('manage_rbac'), async (_req, res) => {
+  try {
+    await loadPermissions();
+    res.json({ status: 'ok', message: 'Permission cache refreshed successfully' });
+  } catch (err) {
+    res.status(500).json({ status: 'error', message: err.message });
+  }
+});
 
 export default router;

@@ -3,6 +3,7 @@ import cors from 'cors';
 import { checkDatabaseConnection } from './db.js';
 import './mqttService.js';
 import router from './routes.js';
+import { loadPermissions } from './middleware/permissionCache.js';
 
 // ─────────────────────────────────────────────
 // STARTUP GUARD — fail fast if JWT_SECRET missing
@@ -39,6 +40,7 @@ const PORT = process.env.PORT || 3000;
 
 async function startServer() {
   await checkDatabaseConnection();
+  await loadPermissions();
 
   app.listen(PORT, () => {
     console.log(`[Server] Running on http://localhost:${PORT}`);

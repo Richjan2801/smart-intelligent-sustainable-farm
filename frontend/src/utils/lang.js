@@ -94,6 +94,22 @@ export const lang = {
     deleteConfirm: "Are you sure you want to delete this?",
     registeredAt: "Registered",
     role: "Role",
+
+    // RBAC Management
+    managePermissions: "Manage Permissions",
+    permission: "Permission",
+    addRole: "Add Role",
+    addPermission: "Add Permission",
+    newRolePlaceholder: "New role name...",
+    newPermPlaceholder: "New permission name...",
+    refreshCache: "Refresh Cache",
+    saveChanges: "Save Changes",
+    saving: "Saving...",
+    permissionsSaved: "Permissions saved successfully!",
+    permissionsSaveError: "Failed to save permissions",
+    cacheRefreshed: "Permission cache refreshed!",
+    noPermissions: "No permissions defined",
+    rbacNote: "Changes are saved to the database. Click \"Refresh Cache\" to apply changes to the running server without restart.",
   },
 
   ID: {
@@ -191,5 +207,21 @@ export const lang = {
     deleteConfirm: "Apakah Anda yakin ingin menghapus ini?",
     registeredAt: "Terdaftar",
     role: "Peran",
+
+    // RBAC Management
+    managePermissions: "Kelola Izin",
+    permission: "Izin",
+    addRole: "Tambah Peran",
+    addPermission: "Tambah Izin",
+    newRolePlaceholder: "Nama peran baru...",
+    newPermPlaceholder: "Nama izin baru...",
+    refreshCache: "Segarkan Cache",
+    saveChanges: "Simpan Perubahan",
+    saving: "Menyimpan...",
+    permissionsSaved: "Izin berhasil disimpan!",
+    permissionsSaveError: "Gagal menyimpan izin",
+    cacheRefreshed: "Cache izin disegarkan!",
+    noPermissions: "Belum ada izin yang ditentukan",
+    rbacNote: "Perubahan disimpan ke database. Klik \"Segarkan Cache\" untuk menerapkan perubahan ke server tanpa restart.",
   },
 };
