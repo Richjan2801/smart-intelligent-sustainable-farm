@@ -58,6 +58,9 @@ export default function ManagePermissions() {
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
+  // Permissions that cannot be modified through the UI to prevent privilege escalation or admin lockout
+  const SYSTEM_PROTECTED = ['manage_rbac'];
+
   const togglePermission = (roleId, permName) => {
     setMatrix(prev => {
       const next = { ...prev };
@@ -224,48 +227,56 @@ export default function ManagePermissions() {
           <thead>
             <tr>
               <th>{t.permission || 'Permission'}</th>
-              {roles.map(role => (
-                <th key={role.role_id} className="role-header">
-                  {role.name}
-                  <button
-                    onClick={() => handleDeleteRole(role.role_id, role.name)}
-                    className="role-delete-btn"
-                    title={`Delete role: ${role.name}`}
-                  >
-                    <Trash2 size={12} />
-                  </button>
-                </th>
-              ))}
+              {roles.map(role => {
+                const formattedRole = t[`role_${role.name}`] || role.name;
+                return (
+                  <th key={role.role_id} className="role-header">
+                    {formattedRole}
+                    <button
+                      onClick={() => handleDeleteRole(role.role_id, role.name)}
+                      className="role-delete-btn"
+                      title={`Delete role: ${formattedRole}`}
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  </th>
+                );
+              })}
               <th className="text-center">{t.actions || 'Actions'}</th>
             </tr>
           </thead>
           <tbody>
-            {permissions.map(perm => (
-              <tr key={perm.permission_id}>
-                <td>
-                  <span className="perm-name">{perm.name}</span>
-                </td>
-                {roles.map(role => (
-                  <td key={role.role_id} className="perm-checkbox-cell">
-                    <input
-                      type="checkbox"
-                      className="perm-checkbox"
-                      checked={matrix[role.role_id]?.has(perm.name) || false}
-                      onChange={() => togglePermission(role.role_id, perm.name)}
-                    />
+            {permissions
+              .filter(perm => !SYSTEM_PROTECTED.includes(perm.name))
+              .map(perm => {
+                const formattedPerm = t[`perm_${perm.name}`] || perm.name;
+                return (
+                  <tr key={perm.permission_id}>
+                    <td>
+                      <span className="perm-name">{formattedPerm}</span>
+                    </td>
+                  {roles.map(role => (
+                    <td key={role.role_id} className="perm-checkbox-cell">
+                      <input
+                        type="checkbox"
+                        className="perm-checkbox"
+                        checked={matrix[role.role_id]?.has(perm.name) || false}
+                        onChange={() => togglePermission(role.role_id, perm.name)}
+                      />
+                    </td>
+                  ))}
+                  <td className="text-center">
+                    <button
+                      onClick={() => handleDeletePermission(perm.permission_id, perm.name)}
+                      className="perm-delete-btn"
+                      title={`Delete: ${formattedPerm}`}
+                    >
+                      <Trash2 size={14} />
+                    </button>
                   </td>
-                ))}
-                <td className="text-center">
-                  <button
-                    onClick={() => handleDeletePermission(perm.permission_id, perm.name)}
-                    className="perm-delete-btn"
-                    title={`Delete: ${perm.name}`}
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                </td>
-              </tr>
-            ))}
+                </tr>
+              );
+            })}
             {permissions.length === 0 && (
               <tr>
                 <td colSpan={roles.length + 2} className="text-center py-4 text-gray-500">

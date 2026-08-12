@@ -123,11 +123,14 @@ export default function ManageUsers() {
                       onChange={(e) => handleRoleChange(u.user_id, e.target.value)}
                       className={`role-select role-${u.role}`}
                     >
-                      {availableRoles.map(r => (
-                        <option key={r.role_id} value={r.name}>
-                          {r.name.charAt(0).toUpperCase() + r.name.slice(1)}
-                        </option>
-                      ))}
+                      {availableRoles.map(r => {
+                        const formattedRole = t[`role_${r.name}`] || r.name.charAt(0).toUpperCase() + r.name.slice(1);
+                        return (
+                          <option key={r.role_id} value={r.name}>
+                            {formattedRole}
+                          </option>
+                        );
+                      })}
                     </select>
                   </td>
                   <td>{new Date(u.created_at).toLocaleDateString()}</td>

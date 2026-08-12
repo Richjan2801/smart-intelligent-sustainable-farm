@@ -110,6 +110,22 @@ export const lang = {
     cacheRefreshed: "Permission cache refreshed!",
     noPermissions: "No permissions defined",
     rbacNote: "Changes are saved to the database. Click \"Refresh Cache\" to apply changes to the running server without restart.",
+    
+    // Permission names
+    perm_view_dashboard: "View Dashboard",
+    perm_view_device_status: "View Device Status",
+    perm_trigger_pump: "Trigger Pump",
+    perm_export_data: "Export Data",
+    perm_view_raw_logs: "View Raw Logs",
+    perm_manage_devices: "Manage Devices",
+    perm_manage_users: "Manage Users",
+    perm_manage_rbac: "Manage RBAC",
+    perm_edit_config: "Edit Configuration",
+
+    // Role names
+    role_admin: "Admin",
+    role_researcher: "Researcher",
+    role_farmer: "Farmer",
   },
 
   ID: {
@@ -223,5 +239,21 @@ export const lang = {
     cacheRefreshed: "Cache izin disegarkan!",
     noPermissions: "Belum ada izin yang ditentukan",
     rbacNote: "Perubahan disimpan ke database. Klik \"Segarkan Cache\" untuk menerapkan perubahan ke server tanpa restart.",
+
+    // Permission names
+    perm_view_dashboard: "Lihat Dasbor",
+    perm_view_device_status: "Lihat Status Perangkat",
+    perm_trigger_pump: "Kendalikan Pompa",
+    perm_export_data: "Ekspor Data",
+    perm_view_raw_logs: "Lihat Log Mentah",
+    perm_manage_devices: "Kelola Perangkat",
+    perm_manage_users: "Kelola Pengguna",
+    perm_manage_rbac: "Kelola RBAC",
+    perm_edit_config: "Ubah Konfigurasi",
+
+    // Role names
+    role_admin: "Admin",
+    role_researcher: "Peneliti",
+    role_farmer: "Petani",
   },
 };

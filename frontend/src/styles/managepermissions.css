@@ -144,11 +144,9 @@
 }
 
 .perm-name {
-  font-family: 'Courier New', monospace;
-  font-size: 13px;
-  background: #f3f4f6;
-  padding: 2px 8px;
-  border-radius: 4px;
+  font-size: 14px;
+  color: #374151;
+  font-weight: 500;
 }
 
 .perm-delete-btn {
@@ -209,4 +207,32 @@
   align-items: center;
   gap: 8px;
   border-top: 1px solid #e5e7eb;
+}
+
+/* System-protected permission row */
+.perm-row-protected {
+  background: #f9fafb;
+  opacity: 0.75;
+}
+
+.perm-row-protected .perm-name {
+  color: #6b7280;
+}
+
+.perm-lock-icon {
+  color: #9ca3af;
+  margin-left: 6px;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+
+.perm-checkbox:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.perm-delete-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.3;
+  pointer-events: none;
 }
