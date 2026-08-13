@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 
 import { clearSession, isSessionValid } from "./utils/session";
+import { loadRbacMapping } from "./utils/rbac";
 
 import Dashboard from "./pages/Dashboard";
 import Settings from "./pages/Settings";
@@ -11,12 +12,19 @@ import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 
 export default function App() {
-  const [isAuthenticated, setIsAuthenticated] =
-    useState(isSessionValid());
+  const [isAuthenticated, setIsAuthenticated] = useState(isSessionValid());
+  const [rbacLoaded, setRbacLoaded] = useState(false);
 
   useEffect(() => {
-    const checkSession = () => {
-      setIsAuthenticated(isSessionValid());
+    let isMounted = true;
+
+    const checkSession = async () => {
+      const valid = isSessionValid();
+      setIsAuthenticated(valid);
+      if (valid) {
+        await loadRbacMapping();
+      }
+      if (isMounted) setRbacLoaded(true);
     };
 
     checkSession();
@@ -48,6 +56,14 @@ export default function App() {
       window.removeEventListener("storage", checkSession);
     };
   }, [isAuthenticated]);
+
+  if (!rbacLoaded) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-gray-500 font-medium">Loading session...</div>
+      </div>
+    );
+  }
 
   return (
     <Routes>
