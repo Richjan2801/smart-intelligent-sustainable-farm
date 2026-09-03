@@ -59,9 +59,7 @@ mqttClient.on('message', (_topic, message) => {
         return;
       }
 
-      if (!offlineBuffered) {
-        resetWatchdog();
-      }
+      resetWatchdog();
 
       const devId = payload.dev_id ?? DEVICE_ID;
 

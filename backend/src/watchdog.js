@@ -71,3 +71,13 @@ export function resetWatchdog() {
   }
   deviceMarkedOffline = false;
 }
+
+/**
+ * Returns whether the watchdog currently considers the device offline.
+ * Used by HTTP endpoints to report real-time connection status
+ * instead of relying on historical DB rows (which may be stale
+ * during a buffer flush).
+ */
+export function isDeviceOffline() {
+  return deviceMarkedOffline;
+}

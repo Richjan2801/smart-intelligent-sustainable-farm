@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
 import { pool, dbReady } from './db.js';
-import { DEVICE_ID } from './watchdog.js';
+import { DEVICE_ID, isDeviceOffline } from './watchdog.js';
 import { auth } from './middleware/auth.js';
 import { authorize } from './middleware/role.js';
 import { publishMessage } from './mqttService.js';
@@ -476,9 +476,18 @@ router.get('/api/telemetry/latest', auth, authorize('view_dashboard'), async (re
       [devId]
     );
 
+    // Override dev_status with real-time watchdog state so the
+    // frontend sees "online" as soon as MQTT data resumes (even
+    // if the latest DB row was written with status "offline"
+    // during a buffer flush).
+    const row = rows[0] || null;
+    if (row) {
+      row.dev_status = isDeviceOffline() ? 'offline' : 'online';
+    }
+
     res.json({
       status: 'ok',
-      data: rows[0] || null,
+      data: row,
     });
   } catch (err) {
     res.status(500).json({ status: 'error', message: err.message });
@@ -573,8 +582,11 @@ router.get('/api/device/status', auth, authorize('view_device_status'), async (r
   try {
     const devId = parseInt(req.query.dev_id) || DEVICE_ID;
 
+    // Real-time connection status from watchdog memory
+    const realtimeStatus = isDeviceOffline() ? 'offline' : 'online';
+
     const { rows } = await pool.query(
-      `SELECT dev_id, dev_status, recorded_at
+      `SELECT dev_id, recorded_at
        FROM sensor_data
        WHERE dev_id = $1
        ORDER BY recorded_at DESC
@@ -584,10 +596,9 @@ router.get('/api/device/status', auth, authorize('view_device_status'), async (r
 
     res.json({
       status: 'ok',
-      data: rows[0] || {
-        dev_id: devId,
-        dev_status: 'offline',
-      },
+      data: rows[0]
+        ? { dev_id: rows[0].dev_id, dev_status: realtimeStatus, recorded_at: rows[0].recorded_at }
+        : { dev_id: devId, dev_status: 'offline' },
     });
   } catch (err) {
     res.status(500).json({ status: 'error', message: err.message });
