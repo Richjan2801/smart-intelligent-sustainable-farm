@@ -25,6 +25,8 @@ static SensorPayload _lastValidPayload = {};
 void connectWiFiBlocking() {
     if (WiFi.status() == WL_CONNECTED) return;
     Serial.printf("[WiFi] Connecting to %s", WIFI_SSID);
+    // use Google DNS to bypass DNS issues in some networks
+    WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE, IPAddress(8, 8, 8, 8), IPAddress(1, 1, 1, 1));
     WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
     unsigned long start = millis();
     while (WiFi.status() != WL_CONNECTED && millis() - start < 5000) {
