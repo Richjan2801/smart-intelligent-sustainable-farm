@@ -6,15 +6,20 @@ const SENSOR_INTERVAL = Number(process.env.VITE_SENSOR_INTERVAL_MS || process.en
 const DEVICE_TIMEOUT = SENSOR_INTERVAL + 5000;
 const OFFLINE_THRESHOLD = Number(process.env.OFFLINE_THRESHOLD) || 3;
 
-let lastMessageTime = Date.now();
+// Elapsed-time threshold beyond which the device is considered offline,
+// used as a fail-safe in isDeviceOffline() regardless of the flag.
+const OFFLINE_ELAPSED_MS = DEVICE_TIMEOUT * OFFLINE_THRESHOLD;
+
+let lastMessageTime = 0;
 let missCount = 0;
 let watchdogInterval = null;
 let deviceMarkedOffline = false;
 
 /**
- * Starts (or restarts) the device watchdog interval.
- * If no MQTT message arrives within DEVICE_TIMEOUT ms for OFFLINE_THRESHOLD
- * consecutive ticks, an "offline" record is inserted into the database.
+ * Starts (or restarts) the watchdog interval timer.
+ * Does NOT reset lastMessageTime or deviceMarkedOffline — only an actual
+ * MQTT sensor message (via resetWatchdog) may clear the offline state.
+ * This prevents MQTT broker reconnects from falsely marking the device online.
  */
 export function startWatchdog() {
   if (watchdogInterval) clearInterval(watchdogInterval);
@@ -23,10 +28,6 @@ export function startWatchdog() {
     `[Watchdog] Started — expecting data every ${SENSOR_INTERVAL / 1000}s, ` +
     `timeout ${DEVICE_TIMEOUT / 1000}s, threshold ${OFFLINE_THRESHOLD} misses`
   );
-
-  lastMessageTime = Date.now();
-  missCount = 0;
-  deviceMarkedOffline = false;
 
   watchdogInterval = setInterval(async () => {
     // Once offline has been recorded, stop counting until a new message arrives
@@ -37,7 +38,7 @@ export function startWatchdog() {
     if (elapsed >= DEVICE_TIMEOUT) {
       missCount++;
       console.log(
-        `[Watchdog] No message for ${Math.round(elapsed / 1000)}s — miss ${missCount}/${OFFLINE_THRESHOLD}`
+        `[Watchdog] No message detected — miss ${missCount}/${OFFLINE_THRESHOLD}`
       );
 
       if (missCount >= OFFLINE_THRESHOLD) {
@@ -61,7 +62,7 @@ export function startWatchdog() {
 
 /**
  * Resets the watchdog timer when a fresh MQTT message arrives.
- * Clears the offline flag so the next outage can be recorded again.
+ * This is the ONLY function that may clear the offline flag.
  */
 export function resetWatchdog() {
   lastMessageTime = Date.now();
@@ -74,10 +75,14 @@ export function resetWatchdog() {
 
 /**
  * Returns whether the watchdog currently considers the device offline.
- * Used by HTTP endpoints to report real-time connection status
- * instead of relying on historical DB rows (which may be stale
- * during a buffer flush).
+ * Uses a dual check:
+ *  1. The explicit deviceMarkedOffline flag (set by the interval timer).
+ *  2. A time-based fail-safe: if the elapsed time since the last message
+ *     exceeds DEVICE_TIMEOUT * OFFLINE_THRESHOLD, the device is offline
+ *     regardless of the flag (covers edge cases like MQTT reconnects
+ *     resetting the interval before it can fire enough times).
  */
 export function isDeviceOffline() {
-  return deviceMarkedOffline;
+  if (deviceMarkedOffline) return true;
+  return (Date.now() - lastMessageTime) >= OFFLINE_ELAPSED_MS;
 }
