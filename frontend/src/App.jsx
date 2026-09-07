@@ -15,19 +15,28 @@ export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(isSessionValid());
   const [rbacLoaded, setRbacLoaded] = useState(false);
 
+  // Load RBAC mapping once on init / auth change (no interval)
   useEffect(() => {
     let isMounted = true;
 
-    const checkSession = async () => {
-      const valid = isSessionValid();
-      setIsAuthenticated(valid);
-      if (valid) {
+    const initRbac = async () => {
+      if (isAuthenticated) {
         await loadRbacMapping();
       }
       if (isMounted) setRbacLoaded(true);
     };
 
-    checkSession();
+    initRbac();
+
+    return () => { isMounted = false; };
+  }, [isAuthenticated]);
+
+  // Session validity check (lightweight, no API calls)
+  useEffect(() => {
+    const checkSession = () => {
+      const valid = isSessionValid();
+      setIsAuthenticated(valid);
+    };
 
     const tokenExpiredAt = Number(
       localStorage.getItem("tokenExpiredAt")
@@ -44,9 +53,7 @@ export default function App() {
       }, Math.max(remainingTime, 0));
     }
 
-    const intervalChecker = setInterval(() => {
-      checkSession();
-    }, 30000);
+    const intervalChecker = setInterval(checkSession, 30000);
 
     window.addEventListener("storage", checkSession);
 
@@ -55,7 +62,7 @@ export default function App() {
       clearInterval(intervalChecker);
       window.removeEventListener("storage", checkSession);
     };
-  }, [isAuthenticated]);
+  }, []);
 
   if (!rbacLoaded) {
     return (

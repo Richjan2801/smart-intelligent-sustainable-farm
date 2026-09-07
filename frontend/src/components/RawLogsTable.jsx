@@ -38,10 +38,39 @@ export default function RawLogsTable() {
   }, []);
 
   useEffect(() => {
-    fetchRawLogs();
+    let intervalId = null;
 
-    const interval = setInterval(fetchRawLogs, 10000);
-    return () => clearInterval(interval);
+    const startPolling = () => {
+      if (intervalId) clearInterval(intervalId);
+      intervalId = setInterval(fetchRawLogs, 30000);
+    };
+
+    const stopPolling = () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+        intervalId = null;
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        stopPolling();
+      } else {
+        fetchRawLogs();
+        startPolling();
+      }
+    };
+
+    // Initial fetch + start polling
+    fetchRawLogs();
+    startPolling();
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      stopPolling();
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
   }, [fetchRawLogs]);
 
   const formatTimestamp = (ts) => {

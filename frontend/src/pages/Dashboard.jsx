@@ -183,19 +183,46 @@ export default function Dashboard() {
   useEffect(() => {
     if (!selectedDevice) return;
 
-    fetchDeviceStatus();
-    fetchLatest();
-    fetchHistory(range);
+    let intervalId = null;
 
-    const interval = setInterval(() => {
+    const refreshData = () => {
       fetchLatest();
       fetchDeviceStatus();
-
       delete cacheRef.current[`${selectedDevice}_${range}`];
       fetchHistory(range);
-    }, 30000);
+    };
 
-    return () => clearInterval(interval);
+    const startPolling = () => {
+      if (intervalId) clearInterval(intervalId);
+      intervalId = setInterval(refreshData, 60000);
+    };
+
+    const stopPolling = () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+        intervalId = null;
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        stopPolling();
+      } else {
+        refreshData();
+        startPolling();
+      }
+    };
+
+    // Initial fetch + start polling
+    refreshData();
+    startPolling();
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      stopPolling();
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
   }, [range, selectedDevice]);
 
   useEffect(() => {
